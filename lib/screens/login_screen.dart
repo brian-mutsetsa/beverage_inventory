@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../database/database_helper.dart';
 import 'home_screen.dart';
 import 'setup_screen.dart';
+import 'manager_auth_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -17,10 +20,7 @@ class _LoginScreenState extends State<LoginScreen> {
     6,
     (index) => TextEditingController(),
   );
-  final List<FocusNode> _focusNodes = List.generate(
-    6,
-    (index) => FocusNode(),
-  );
+  final List<FocusNode> _focusNodes = List.generate(6, (index) => FocusNode());
 
   bool _isLoading = false;
   String? _errorMessage;
@@ -40,13 +40,14 @@ class _LoginScreenState extends State<LoginScreen> {
       final manager = await _dbHelper.getManagerUser();
 
       if (manager == null) {
-        // No manager exists, go to setup
-        if (mounted) {
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const SetupScreen()),
-          );
-        }
+        // No manager exists locally. This might happen if offline or fresh sync needed.
+        // Wait, if we are in LoginScreen, DatabaseHelper.companyId is set.
+        // If there's no manager in SQLite, we should perhaps still allow login, or sync.
+        // We will just let them enter PIN. Staff don't need the manager record to exist
+        // to log in if their record synced.
+        setState(() {
+          _isLoading = false;
+        });
       } else {
         setState(() {
           _isLoading = false;
@@ -109,6 +110,19 @@ class _LoginScreenState extends State<LoginScreen> {
     _focusNodes[0].requestFocus();
   }
 
+  void _logoutDevice() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('companyId');
+    _dbHelper.currentCompanyId = '';
+
+    if (mounted) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const ManagerAuthScreen()),
+      );
+    }
+  }
+
   @override
   void dispose() {
     for (var controller in _pinControllers) {
@@ -123,70 +137,81 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              const Color(0xFF1565C0),
-              const Color(0xFF0D47A1),
-            ],
-          ),
-        ),
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  // Logo/Icon
-                  Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.local_drink,
-                      size: 60,
-                      color: Colors.white,
-                    ),
+      backgroundColor: Colors.white,
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 32.0,
+              vertical: 24.0,
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Logo/Icon
+                Container(
+                  width: 90,
+                  height: 90,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[100],
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(height: 32),
-
-                  // App Title
-                  const Text(
-                    'Beverage Inventory',
-                    style: TextStyle(
-                      fontSize: 32,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Supply Chain Management',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.white.withOpacity(0.9),
-                    ),
-                  ),
-                  const SizedBox(height: 48),
-
-                  // Login Card
-                  if (_isLoading)
-                    const Center(
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(45),
+                    child: Image.asset(
+                      'assets/icon.png',
+                      errorBuilder: (context, error, stackTrace) => const Icon(
+                        Icons.lock_person,
+                        size: 50,
+                        color: Colors.black87,
                       ),
-                    )
-                  else
-                    _buildLoginCard(),
-                ],
-              ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // App Title
+                Text(
+                  'Welcome Back',
+                  style: GoogleFonts.poppins(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Enter your 6-character Code to access Aura.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 48),
+
+                // Login Area
+                if (_isLoading)
+                  const Center(
+                    child: CircularProgressIndicator(color: Colors.black),
+                  )
+                else
+                  _buildLoginBox(),
+
+                const SizedBox(height: 32),
+
+                TextButton(
+                  onPressed: _logoutDevice,
+                  child: Text(
+                    'Switch Company',
+                    style: GoogleFonts.poppins(
+                      color: Colors.grey[500],
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -194,107 +219,82 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildLoginCard() {
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Title
-            const Text(
-              'Enter PIN',
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Enter your 6-digit PIN to continue',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // PIN Input Fields
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(6, (index) => _buildPinBox(index)),
-            ),
-            const SizedBox(height: 24),
-
-            // Error Message
-            if (_errorMessage != null)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red[50],
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.red[200]!),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.error_outline, color: Colors.red, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _errorMessage!,
-                        style: const TextStyle(
-                          color: Colors.red,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            if (_errorMessage != null) const SizedBox(height: 24),
-
-            // Login Button
-            SizedBox(
-              width: double.infinity,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _handleLogin,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF1565C0),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'Login',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ),
-          ],
+  Widget _buildLoginBox() {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // PIN Input Fields
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: List.generate(6, (index) => _buildPinBox(index)),
         ),
-      ),
+        const SizedBox(height: 32),
+
+        // Error Message
+        if (_errorMessage != null)
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 24),
+            decoration: BoxDecoration(
+              color: Colors.red[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.red[200]!),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    _errorMessage!,
+                    style: GoogleFonts.poppins(
+                      color: Colors.red[800],
+                      fontSize: 13,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+        // Login Button
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: ElevatedButton(
+            onPressed: _handleLogin,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.black,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: Text(
+              'Sign In',
+              style: GoogleFonts.poppins(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildPinBox(int index) {
     return Container(
-      width: 45,
-      height: 55,
+      width: 48,
+      height: 56,
       decoration: BoxDecoration(
+        color: Colors.grey[100],
         border: Border.all(
           color: _focusNodes[index].hasFocus
-              ? const Color(0xFF1565C0)
-              : Colors.grey[300]!,
-          width: 2,
+              ? Colors.black
+              : Colors.transparent,
+          width: 1.5,
         ),
         borderRadius: BorderRadius.circular(12),
       ),
@@ -302,29 +302,37 @@ class _LoginScreenState extends State<LoginScreen> {
         controller: _pinControllers[index],
         focusNode: _focusNodes[index],
         textAlign: TextAlign.center,
-        keyboardType: TextInputType.number,
+        textCapitalization: TextCapitalization.characters,
+        keyboardType: TextInputType.text,
         maxLength: 1,
         obscureText: true,
         obscuringCharacter: '●',
-        style: const TextStyle(
+        style: GoogleFonts.poppins(
           fontSize: 24,
           fontWeight: FontWeight.bold,
+          color: Colors.black,
         ),
         decoration: const InputDecoration(
           counterText: '',
           border: InputBorder.none,
         ),
         inputFormatters: [
-          FilteringTextInputFormatter.digitsOnly,
+          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9]')),
         ],
         onChanged: (value) {
           if (value.isNotEmpty) {
+            _pinControllers[index].value = TextEditingValue(
+              text: value.toUpperCase(),
+              selection: const TextSelection.collapsed(offset: 1),
+            );
             // Move to next field
             if (index < 5) {
               _focusNodes[index + 1].requestFocus();
             } else {
               // Last field, unfocus to show keyboard done
               _focusNodes[index].unfocus();
+              // Auto login
+              _handleLogin();
             }
           } else if (value.isEmpty && index > 0) {
             // Move to previous field on backspace

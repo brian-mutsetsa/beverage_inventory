@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../database/database_helper.dart';
 import '../models/user.dart';
@@ -172,7 +173,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('✓ PDF report generated successfully!'),
-            backgroundColor: Colors.green,
+            backgroundColor: Colors.black87,
           ),
         );
       }
@@ -188,9 +189,21 @@ class _ReportsScreenState extends State<ReportsScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
-        title: const Text('Reports & Analytics'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          'Reports & Analytics',
+          style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black, letterSpacing: -0.5),
+        ),
+        iconTheme: const IconThemeData(color: Colors.black87),
         bottom: TabBar(
+          labelColor: Colors.black,
+          unselectedLabelColor: Colors.grey[500],
+          indicatorColor: Colors.black,
+          labelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 13),
+          unselectedLabelStyle: GoogleFonts.poppins(fontWeight: FontWeight.w500, fontSize: 13),
           controller: _tabController,
           isScrollable: false,
           tabs: [
@@ -210,12 +223,12 @@ class _ReportsScreenState extends State<ReportsScreen>
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.picture_as_pdf),
+            icon: const Icon(Icons.picture_as_pdf, color: Colors.black87),
             onPressed: _exportCurrentTab,
             tooltip: 'Export as PDF',
           ),
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.black87),
             onPressed: _loadReportsData,
             tooltip: 'Refresh',
           ),
@@ -243,28 +256,19 @@ class _ReportsScreenState extends State<ReportsScreen>
         padding: const EdgeInsets.all(16),
         children: [
           // Period Stats
-          const Text(
-            'Sales Overview',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+          Text('Sales Overview', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 16),
           _buildSalesStatsCards(),
           const SizedBox(height: 24),
 
           // Daily Sales Trend
-          const Text(
-            'Sales Trend (Last 7 Days)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          Text('Sales Trend (Last 7 Days)', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 12),
           _buildDailySalesTrend(),
           const SizedBox(height: 24),
 
           // Top Products
-          const Text(
-            'Top Products This Month',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          Text('Top Products This Month', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 12),
           _buildTopProducts(),
         ],
@@ -313,13 +317,12 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   Widget _buildDailySalesTrend() {
     if (_dailySalesData.isEmpty) {
-      return Card(
-        child: Padding(
+      return Container( padding: const EdgeInsets.all(0), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)), child: Padding(
           padding: const EdgeInsets.all(32),
           child: Center(
             child: Text(
               'No sales data for the past 7 days',
-              style: TextStyle(color: Colors.grey[600]),
+              style: GoogleFonts.poppins(color: Colors.grey[600]),
             ),
           ),
         ),
@@ -330,8 +333,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         .map((d) => (d['total'] as num?)?.toDouble() ?? 0.0)
         .reduce((a, b) => a > b ? a : b);
 
-    return Card(
-      child: Padding(
+    return Container( padding: const EdgeInsets.all(0), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)), child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: _dailySalesData.map((data) {
@@ -351,7 +353,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                         width: 70,
                         child: Text(
                           DateFormat('MMM dd').format(date),
-                          style: const TextStyle(
+                          style: GoogleFonts.poppins(
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),
@@ -379,7 +381,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                       const SizedBox(width: 12),
                       Text(
                         '\$${total.toStringAsFixed(2)}',
-                        style: const TextStyle(
+                        style: GoogleFonts.poppins(
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -391,7 +393,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     padding: const EdgeInsets.only(left: 70),
                     child: Text(
                       '$count ${count == 1 ? 'transaction' : 'transactions'}',
-                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                      style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600]),
                     ),
                   ),
                 ],
@@ -405,13 +407,12 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   Widget _buildTopProducts() {
     if (_topProducts.isEmpty) {
-      return Card(
-        child: Padding(
+      return Container( padding: const EdgeInsets.all(0), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)), child: Padding(
           padding: const EdgeInsets.all(32),
           child: Center(
             child: Text(
               'No product sales this month',
-              style: TextStyle(color: Colors.grey[600]),
+              style: GoogleFonts.poppins(color: Colors.grey[600]),
             ),
           ),
         ),
@@ -426,9 +427,7 @@ class _ReportsScreenState extends State<ReportsScreen>
         final transactions =
             (product['transactionCount'] as num?)?.toInt() ?? 0;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
+        return Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(0), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)), child: ListTile(
             leading: CircleAvatar(
               backgroundColor: const Color(0xFF1565C0).withOpacity(0.1),
               child: const Icon(
@@ -439,14 +438,14 @@ class _ReportsScreenState extends State<ReportsScreen>
             ),
             title: Text(
               name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
             ),
             subtitle: Text(
               '$quantity units • $transactions ${transactions == 1 ? 'sale' : 'sales'}',
             ),
             trailing: Text(
               '\$${revenue.toStringAsFixed(2)}',
-              style: const TextStyle(
+              style: GoogleFonts.poppins(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Color(0xFF2E7D32),
@@ -466,18 +465,12 @@ class _ReportsScreenState extends State<ReportsScreen>
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'Inventory Overview',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+          Text('Inventory Overview', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 16),
           _buildInventoryStatsCards(),
           const SizedBox(height: 24),
 
-          const Text(
-            'Products by Category',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          Text('Products by Category', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 12),
           _buildCategoryBreakdown(),
         ],
@@ -560,13 +553,12 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   Widget _buildCategoryBreakdown() {
     if (_categoryData.isEmpty) {
-      return Card(
-        child: Padding(
+      return Container( padding: const EdgeInsets.all(0), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)), child: Padding(
           padding: const EdgeInsets.all(32),
           child: Center(
             child: Text(
               'No category data available',
-              style: TextStyle(color: Colors.grey[600]),
+              style: GoogleFonts.poppins(color: Colors.grey[600]),
             ),
           ),
         ),
@@ -580,22 +572,20 @@ class _ReportsScreenState extends State<ReportsScreen>
         final quantity = (category['totalQuantity'] as num?)?.toInt() ?? 0;
         final value = (category['totalValue'] as num?)?.toDouble() ?? 0.0;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
+        return Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(0), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)), child: ListTile(
             leading: CircleAvatar(
               backgroundColor: Colors.purple.withOpacity(0.1),
               child: const Icon(Icons.category, color: Colors.purple),
             ),
             title: Text(
               name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
             ),
             subtitle: Text('$count products • $quantity units in stock'),
             trailing: _isManager
                 ? Text(
                     '\$${value.toStringAsFixed(2)}',
-                    style: const TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Color(0xFF2E7D32),
@@ -603,7 +593,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                   )
                 : Text(
                     '$quantity units',
-                    style: const TextStyle(
+                    style: GoogleFonts.poppins(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
@@ -622,18 +612,12 @@ class _ReportsScreenState extends State<ReportsScreen>
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'Employee Performance',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+          Text('Employee Performance', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 16),
           _buildEmployeePerformance(),
           const SizedBox(height: 24),
 
-          const Text(
-            'Recent Activity (Last 7 Days)',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
+          Text('Recent Activity (Last 7 Days)', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 12),
           _buildRecentActivity(),
         ],
@@ -643,13 +627,12 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   Widget _buildEmployeePerformance() {
     if (_employeePerformance.isEmpty) {
-      return Card(
-        child: Padding(
+      return Container( padding: const EdgeInsets.all(0), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)), child: Padding(
           padding: const EdgeInsets.all(32),
           child: Center(
             child: Text(
               'No employee sales recorded yet',
-              style: TextStyle(color: Colors.grey[600]),
+              style: GoogleFonts.poppins(color: Colors.grey[600]),
             ),
           ),
         ),
@@ -661,14 +644,12 @@ class _ReportsScreenState extends State<ReportsScreen>
         final name = employee['userName'] as String;
         final salesCount = (employee['actionCount'] as num?)?.toInt() ?? 0;
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
+        return Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(0), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)), child: ListTile(
             leading: CircleAvatar(
               backgroundColor: const Color(0xFF1565C0),
               child: Text(
                 name[0].toUpperCase(),
-                style: const TextStyle(
+                style: GoogleFonts.poppins(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
@@ -676,7 +657,7 @@ class _ReportsScreenState extends State<ReportsScreen>
             ),
             title: Text(
               name,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
             ),
             subtitle: Text(
               '$salesCount ${salesCount == 1 ? 'sale' : 'sales'} recorded',
@@ -689,7 +670,7 @@ class _ReportsScreenState extends State<ReportsScreen>
               ),
               child: Text(
                 '$salesCount',
-                style: const TextStyle(
+                style: GoogleFonts.poppins(
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF2E7D32),
                 ),
@@ -703,13 +684,12 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   Widget _buildRecentActivity() {
     if (_recentActivity.isEmpty) {
-      return Card(
-        child: Padding(
+      return Container( padding: const EdgeInsets.all(0), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)), child: Padding(
           padding: const EdgeInsets.all(32),
           child: Center(
             child: Text(
               'No recent activity',
-              style: TextStyle(color: Colors.grey[600]),
+              style: GoogleFonts.poppins(color: Colors.grey[600]),
             ),
           ),
         ),
@@ -732,14 +712,12 @@ class _ReportsScreenState extends State<ReportsScreen>
           (sum, a) => sum + ((a['count'] as num?)?.toInt() ?? 0),
         );
 
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ExpansionTile(
+        return Container(margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(0), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)), child: ExpansionTile(
             leading: CircleAvatar(
               backgroundColor: Colors.blue[100],
               child: Text(
                 userName[0].toUpperCase(),
-                style: const TextStyle(
+                style: GoogleFonts.poppins(
                   color: Color(0xFF1565C0),
                   fontWeight: FontWeight.bold,
                 ),
@@ -747,7 +725,7 @@ class _ReportsScreenState extends State<ReportsScreen>
             ),
             title: Text(
               userName,
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
             ),
             subtitle: Text('$totalActions actions this week'),
             children: activities.map((activity) {
@@ -765,7 +743,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                 title: Text(actionLabel),
                 trailing: Text(
                   '$count',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.bold),
                 ),
               );
             }).toList(),
@@ -798,10 +776,7 @@ class _ReportsScreenState extends State<ReportsScreen>
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const Text(
-            'Profit Analysis (This Month)',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
+          Text('Profit Analysis (This Month)', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 16),
           _buildProfitCards(),
           const SizedBox(height: 24),
@@ -879,13 +854,12 @@ class _ReportsScreenState extends State<ReportsScreen>
     final profit = (_profitAnalysis['grossProfit'] as num?)?.toDouble() ?? 0.0;
 
     if (revenue == 0) {
-      return Card(
-        child: Padding(
+      return Container( padding: const EdgeInsets.all(0), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)), child: Padding(
           padding: const EdgeInsets.all(32),
           child: Center(
             child: Text(
               'No sales data this month',
-              style: TextStyle(color: Colors.grey[600]),
+              style: GoogleFonts.poppins(color: Colors.grey[600]),
             ),
           ),
         ),
@@ -895,16 +869,12 @@ class _ReportsScreenState extends State<ReportsScreen>
     final costPercentage = (cost / revenue) * 100;
     final profitPercentage = (profit / revenue) * 100;
 
-    return Card(
-      child: Padding(
+    return Container( padding: const EdgeInsets.all(0), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)), child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Revenue Breakdown',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
+            Text('Revenue Breakdown', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
             const SizedBox(height: 16),
 
             // Visual breakdown
@@ -930,7 +900,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                         alignment: Alignment.center,
                         child: Text(
                           '${costPercentage.toStringAsFixed(1)}%',
-                          style: const TextStyle(
+                          style: GoogleFonts.poppins(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
@@ -958,7 +928,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                         alignment: Alignment.center,
                         child: Text(
                           '${profitPercentage.toStringAsFixed(1)}%',
-                          style: const TextStyle(
+                          style: GoogleFonts.poppins(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
@@ -1010,11 +980,11 @@ class _ReportsScreenState extends State<ReportsScreen>
           children: [
             Text(
               label,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[600]),
             ),
             Text(
               value,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -1031,40 +1001,34 @@ class _ReportsScreenState extends State<ReportsScreen>
     IconData icon, {
     bool fullWidth = false,
   }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: color, size: 24),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: fullWidth ? 28 : 24,
-                fontWeight: FontWeight.bold,
-                color: color,
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+                child: Icon(icon, color: color, size: 20),
               ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-            ),
-          ],
-        ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(title, style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(value, style: GoogleFonts.poppins(fontSize: fullWidth ? 28 : 24, fontWeight: FontWeight.bold, color: Colors.black87, letterSpacing: -0.5)),
+          const SizedBox(height: 4),
+          Text(subtitle, style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[500])),
+        ],
       ),
     );
   }

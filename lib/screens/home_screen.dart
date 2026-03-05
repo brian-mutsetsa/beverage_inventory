@@ -42,23 +42,26 @@ class _HomeScreenState extends State<HomeScreen> {
           });
         },
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: const Color(0xFF1565C0),
-        unselectedItemColor: Colors.grey,
+        selectedItemColor: Colors.black,
+        unselectedItemColor: Colors.grey[400],
+        selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+        unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.normal, fontSize: 12),
+        elevation: 8,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.dashboard),
+            icon: Icon(Icons.dashboard_rounded),
             label: 'Dashboard',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.inventory_2),
+            icon: Icon(Icons.inventory_2_rounded),
             label: 'Inventory',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.point_of_sale),
+            icon: Icon(Icons.point_of_sale_rounded),
             label: 'Sales',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.bar_chart),
+            icon: Icon(Icons.bar_chart_rounded),
             label: 'Reports',
           ),
         ],

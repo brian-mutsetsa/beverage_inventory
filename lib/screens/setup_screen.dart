@@ -42,7 +42,8 @@ class _SetupScreenState extends State<SetupScreen> {
 
     try {
       final manager = User(
-        pin: _pinController.text.trim(),
+companyId: DatabaseHelper.instance.currentCompanyId,
+pin: _pinController.text.trim(),
         fullName: _nameController.text.trim(),
         role: 'manager',
         phone: _phoneController.text.trim(),

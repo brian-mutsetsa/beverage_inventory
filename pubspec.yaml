@@ -1,5 +1,5 @@
 name: beverage_inventory
-description: "A new Flutter project."
+description: "Aura - Intelligent Beverage Inventory"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -40,6 +40,14 @@ dependencies:
   intl: ^0.19.0
   pdf: ^3.11.1          # Add this line
   printing: ^5.13.2     # Add this line
+  google_fonts: ^8.0.2
+  lottie: ^3.3.2
+  shared_preferences: ^2.5.4
+  flutter_staggered_animations: ^1.1.1
+  ml_algo: ^16.18.0
+  ml_dataframe: ^1.6.0
+  flutter_local_notifications: ^21.0.0-dev.2
+  timezone: ^0.11.0
 
 dev_dependencies:
   flutter_test:
@@ -51,6 +59,7 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -63,9 +72,8 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
-  # assets:
-  #   - images/a_dot_burr.jpeg
+  assets:
+    - assets/
   #   - images/a_dot_ham.jpeg
 
   # An image asset can refer to one or more resolution-specific "variants", see
@@ -93,3 +101,9 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/icon.png"
+  min_sdk_android: 21

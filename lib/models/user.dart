@@ -1,5 +1,6 @@
 class User {
   final int? id;
+  final String companyId; // Added for multi-tenancy
   final String pin;
   final String fullName;
   final String role; // 'manager' or 'staff'
@@ -11,6 +12,7 @@ class User {
 
   User({
     this.id,
+    required this.companyId,
     required this.pin,
     required this.fullName,
     required this.role,
@@ -25,6 +27,7 @@ class User {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'companyId': companyId,
       'pin': pin,
       'fullName': fullName,
       'role': role,
@@ -40,6 +43,7 @@ class User {
   factory User.fromMap(Map<String, dynamic> map) {
     return User(
       id: map['id'],
+      companyId: map['companyId'] ?? '',
       pin: map['pin'],
       fullName: map['fullName'],
       role: map['role'],
@@ -54,6 +58,7 @@ class User {
   // Create a copy with some fields updated
   User copyWith({
     int? id,
+    String? companyId,
     String? pin,
     String? fullName,
     String? role,
@@ -65,6 +70,7 @@ class User {
   }) {
     return User(
       id: id ?? this.id,
+      companyId: companyId ?? this.companyId,
       pin: pin ?? this.pin,
       fullName: fullName ?? this.fullName,
       role: role ?? this.role,

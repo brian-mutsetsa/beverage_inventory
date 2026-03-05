@@ -1,5 +1,6 @@
 class AuditLog {
   final int? id;
+  final String companyId; // Added for multi-tenancy
   final int userId;
   final String userName;
   final String action; // 'add_product', 'record_sale', 'edit_product', etc.
@@ -8,6 +9,7 @@ class AuditLog {
 
   AuditLog({
     this.id,
+    required this.companyId,
     required this.userId,
     required this.userName,
     required this.action,
@@ -19,6 +21,7 @@ class AuditLog {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'companyId': companyId,
       'userId': userId,
       'userName': userName,
       'action': action,
@@ -31,6 +34,7 @@ class AuditLog {
   factory AuditLog.fromMap(Map<String, dynamic> map) {
     return AuditLog(
       id: map['id'],
+      companyId: map['companyId'] ?? '',
       userId: map['userId'],
       userName: map['userName'],
       action: map['action'],

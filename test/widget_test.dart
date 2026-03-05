@@ -5,7 +5,7 @@ import 'package:beverage_inventory/main.dart';
 void main() {
   testWidgets('App smoke test', (WidgetTester tester) async {
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const BeverageInventoryApp());
+    await tester.pumpWidget(const AuraApp());
 
     // Verify that the app starts with Dashboard screen
     expect(find.text('Dashboard'), findsOneWidget);

@@ -1,5 +1,6 @@
 class Sale {
   final int? id;
+  final String companyId; // Added for multi-tenancy
   final int productId;
   final String productName;
   final int quantitySold;
@@ -10,6 +11,7 @@ class Sale {
 
   Sale({
     this.id,
+    required this.companyId,
     required this.productId,
     required this.productName,
     required this.quantitySold,
@@ -21,6 +23,7 @@ class Sale {
 
   Sale copyWith({
     int? id,
+    String? companyId,
     int? productId,
     String? productName,
     int? quantitySold,
@@ -31,6 +34,7 @@ class Sale {
   }) {
     return Sale(
       id: id ?? this.id,
+      companyId: companyId ?? this.companyId,
       productId: productId ?? this.productId,
       productName: productName ?? this.productName,
       quantitySold: quantitySold ?? this.quantitySold,
@@ -44,6 +48,7 @@ class Sale {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'companyId': companyId,
       'productId': productId,
       'productName': productName,
       'quantitySold': quantitySold,
@@ -57,6 +62,7 @@ class Sale {
   factory Sale.fromMap(Map<String, dynamic> map) {
     return Sale(
       id: map['id'] as int?,
+      companyId: map['companyId'] ?? '',
       productId: map['productId'] as int,
       productName: map['productName'] as String,
       quantitySold: map['quantitySold'] as int,
@@ -69,6 +75,6 @@ class Sale {
 
   @override
   String toString() {
-    return 'Sale(id: $id, productName: $productName, quantitySold: $quantitySold, totalAmount: $totalAmount, saleDate: $saleDate)';
+    return 'Sale(id: $id, companyId: $companyId, productName: $productName, quantitySold: $quantitySold, totalAmount: $totalAmount, saleDate: $saleDate)';
   }
 }

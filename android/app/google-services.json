@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "188864551683",
+    "project_id": "aura-inventory-dd6c9",
+    "storage_bucket": "aura-inventory-dd6c9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:188864551683:android:d38dc0551295ab9e9be736",
+        "android_client_info": {
+          "package_name": "com.brian.beverage_inventory"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJDg19WcTpNCWLaWx2rfJ7bcAZykcd7GY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

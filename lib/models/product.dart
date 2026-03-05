@@ -1,5 +1,6 @@
 class Product {
   final int? id;
+  final String companyId; // Added for multi-tenancy
   final String name;
   final String category;
   final int quantity;
@@ -14,6 +15,7 @@ class Product {
 
   Product({
     this.id,
+    required this.companyId,
     required this.name,
     required this.category,
     required this.quantity,
@@ -31,6 +33,7 @@ class Product {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'companyId': companyId,
       'name': name,
       'category': category,
       'quantity': quantity,
@@ -49,6 +52,7 @@ class Product {
   factory Product.fromMap(Map<String, dynamic> map) {
     return Product(
       id: map['id'],
+      companyId: map['companyId'] ?? '', // Fallback for old data during migration
       name: map['name'],
       category: map['category'],
       quantity: map['quantity'],
@@ -66,6 +70,7 @@ class Product {
   // Create a copy of Product with some fields updated
   Product copyWith({
     int? id,
+    String? companyId,
     String? name,
     String? category,
     int? quantity,
@@ -80,6 +85,7 @@ class Product {
   }) {
     return Product(
       id: id ?? this.id,
+      companyId: companyId ?? this.companyId,
       name: name ?? this.name,
       category: category ?? this.category,
       quantity: quantity ?? this.quantity,

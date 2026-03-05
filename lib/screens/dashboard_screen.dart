@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../database/database_helper.dart';
 import '../models/product.dart';
 import '../models/user.dart';
 import '../helpers/demo_data_helper.dart';
 import 'login_screen.dart';
 import 'user_management_screen.dart';
+import '../widgets/ai_insights_widget.dart';
 
 class DashboardScreen extends StatefulWidget {
   final User? currentUser;
@@ -17,7 +19,7 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
-  
+
   int _totalProducts = 0;
   double _totalInventoryValue = 0.0;
   int _lowStockCount = 0;
@@ -35,9 +37,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _loadDashboardData() async {
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final productCount = await _dbHelper.getProductCount();
@@ -52,13 +52,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading dashboard: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error loading dashboard: $e')));
       }
     }
   }
@@ -67,57 +65,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Load Demo Data?'),
         content: const Text(
-          'This will add:\n'
-          '• 10 sample products\n'
-          '• 5 sample employees\n'
-          '• 24 sample sales\n\n'
-          'Perfect for testing and demonstration purposes.',
+          'This will add:\n• 10 sample products\n• 5 sample employees\n• 24 sample sales\n\nPerfect for testing.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF1565C0),
+              backgroundColor: const Color(0xFFFFB300),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
             ),
-            child: const Text('Load Demo Data'),
+            child: const Text(
+              'Load Demo Data',
+              style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
     );
 
     if (confirm == true) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
 
       try {
         await DemoDataHelper.loadDemoData(widget.currentUser!);
-        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✓ Demo data loaded successfully!'),
-              backgroundColor: Colors.green,
-              duration: Duration(seconds: 2),
+              content: Text('Demo data loaded successfully!'),
+              backgroundColor: Colors.black87,
             ),
           );
         }
-
         await _loadDashboardData();
       } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error loading demo data: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
         }
       }
     }
@@ -127,56 +124,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Clear All Data?'),
         content: const Text(
-          'This will remove:\n'
-          '• All products\n'
-          '• All sales\n'
-          '• All employees (except you)\n\n'
-          'This action cannot be undone!',
+          'This will remove all products, sales, and employees (except you). Cannot be undone!',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
+              backgroundColor: const Color(0xFFFFB300),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
             ),
-            child: const Text('Clear All Data'),
+            child: const Text(
+              'Clear All',
+              style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
     );
 
     if (confirm == true) {
-      setState(() {
-        _isLoading = true;
-      });
+      setState(() => _isLoading = true);
 
       try {
         await DemoDataHelper.clearAllData();
-        
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✓ All data cleared!'),
-              backgroundColor: Colors.orange,
+              content: Text('All data cleared!'),
+              backgroundColor: Colors.black87,
             ),
           );
         }
-
         await _loadDashboardData();
       } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error clearing data: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
         }
       }
     }
@@ -192,132 +189,125 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(
+        0xFFFFF8E1,
+      ), // Slight warm tint on background
       appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Dashboard'),
+            Text(
+              'Aura',
+              style: GoogleFonts.poppins(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+                letterSpacing: -0.5,
+              ),
+            ),
             if (widget.currentUser != null)
               Text(
-                widget.currentUser!.fullName,
-                style: const TextStyle(fontSize: 12),
+                'Hi, ${widget.currentUser!.fullName.split(' ').first}',
+                style: GoogleFonts.poppins(
+                  fontSize: 13,
+                  color: Colors.grey[600],
+                ),
               ),
           ],
         ),
         actions: [
-          // Role Badge
           if (widget.currentUser != null)
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: _isManager ? Colors.amber : Colors.blue[100],
+                color: _isManager
+                    ? const Color(0xFFE0E0E0)
+                    : const Color(0xFFF5F5F5),
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.grey[300]!),
               ),
-              child: Text(
-                _isManager ? 'MANAGER' : 'STAFF',
-                style: TextStyle(
-                  color: _isManager ? Colors.black87 : Colors.blue[900],
-                  fontWeight: FontWeight.bold,
-                  fontSize: 11,
+              child: Center(
+                child: Text(
+                  _isManager ? 'MANAGER' : 'STAFF',
+                  style: GoogleFonts.poppins(
+                    color: Colors.black87,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 10,
+                    letterSpacing: 1.0,
+                  ),
                 ),
               ),
             ),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadDashboardData,
-            tooltip: 'Refresh',
-          ),
           if (_isManager)
             PopupMenuButton<String>(
+              icon: const Icon(Icons.more_vert, color: Colors.black87),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
               onSelected: (value) {
-                if (value == 'load_demo') {
+                if (value == 'load_demo')
                   _loadDemoData();
-                } else if (value == 'clear_data') {
+                else if (value == 'clear_data')
                   _clearDemoData();
-                } else if (value == 'logout') {
+                else if (value == 'logout')
                   _logout();
-                }
               },
               itemBuilder: (context) => [
-                // Always show Load Demo Data option if there's no data
                 if (_hasNoData)
                   const PopupMenuItem(
                     value: 'load_demo',
-                    child: Row(
-                      children: [
-                        Icon(Icons.download, size: 20, color: Colors.blue),
-                        SizedBox(width: 12),
-                        Text('Load Demo Data'),
-                      ],
-                    ),
+                    child: Text('Load Demo Data'),
                   ),
-                // Show Clear Data if there IS data
                 if (!_hasNoData)
                   const PopupMenuItem(
                     value: 'clear_data',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete_sweep, size: 20, color: Colors.red),
-                        SizedBox(width: 12),
-                        Text('Clear All Data'),
-                      ],
+                    child: Text(
+                      'Clear All Data',
+                      style: TextStyle(color: Color(0xFFE53935)),
                     ),
                   ),
-                const PopupMenuItem(
-                  value: 'logout',
-                  child: Row(
-                    children: [
-                      Icon(Icons.logout, size: 20),
-                      SizedBox(width: 12),
-                      Text('Logout'),
-                    ],
-                  ),
-                ),
+                const PopupMenuItem(value: 'logout', child: Text('Logout')),
               ],
             )
           else
             IconButton(
-              icon: const Icon(Icons.logout),
+              icon: const Icon(Icons.logout, color: Colors.black87),
               onPressed: _logout,
-              tooltip: 'Logout',
             ),
         ],
       ),
       body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFFFFB300)),
+            )
           : RefreshIndicator(
+              color: const Color(0xFFFFB300),
               onRefresh: _loadDashboardData,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(24),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Welcome Message
-                    if (widget.currentUser != null) ...[
-                      _buildWelcomeCard(),
-                      const SizedBox(height: 24),
-                    ],
-                    
-                    // Demo Data Banner (if no data exists and user is manager)
                     if (_isManager && _hasNoData) ...[
                       _buildDemoDataBanner(),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 32),
                     ],
-                    
-                    // Statistics Cards
                     _buildStatisticsCards(),
-                    const SizedBox(height: 24),
-                    
-                    // Low Stock Warning
+                    const SizedBox(height: 32),
+                    if (!_isStaff && !_hasNoData) ...[
+                      const AIInsightsWidget(),
+                      const SizedBox(height: 32),
+                    ],
                     if (_lowStockCount > 0) ...[
                       _buildLowStockSection(),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 32),
                     ],
-                    
-                    // Quick Actions
                     _buildQuickActions(),
+                    const SizedBox(height: 48), // Bottom padding
                   ],
                 ),
               ),
@@ -325,23 +315,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildWelcomeCard() {
-    return Card(
-      color: const Color(0xFFE3F2FD),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
+  Widget _buildDemoDataBanner() {
+    return InkWell(
+      onTap: _loadDemoData,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.grey[200]!),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.04),
+              blurRadius: 24,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
         child: Row(
           children: [
-            CircleAvatar(
-              radius: 30,
-              backgroundColor: const Color(0xFF1565C0),
-              child: Text(
-                widget.currentUser!.fullName[0].toUpperCase(),
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFF8E1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.auto_awesome,
+                color: Color(0xFFFFB300),
+                size: 24,
               ),
             ),
             const SizedBox(width: 16),
@@ -350,78 +353,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Welcome back, ${widget.currentUser!.fullName.split(' ').first}!',
-                    style: const TextStyle(
-                      fontSize: 18,
+                    'Quick Setup',
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
-                    _isManager 
-                        ? 'Manager Account' 
-                        : 'Staff Account',
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[700],
-                    ),
+                    'Load demo data to see Aura in action.',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[600]),
                   ),
                 ],
               ),
             ),
+            const Icon(Icons.arrow_forward_ios, size: 14, color: Colors.grey),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDemoDataBanner() {
-    return Card(
-      color: const Color(0xFFFFF3E0),
-      child: InkWell(
-        onTap: _loadDemoData,
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange[100],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(
-                  Icons.download,
-                  color: Color(0xFFF57C00),
-                  size: 32,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Load Demo Data',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Quickly populate with sample products, employees & sales',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[700],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Icon(Icons.arrow_forward_ios, size: 16),
-            ],
-          ),
         ),
       ),
     );
@@ -431,33 +378,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Overview',
-          style: TextStyle(
+          style: GoogleFonts.poppins(
             fontSize: 20,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
               child: _buildStatCard(
-                'Total Products',
+                'Products',
                 _totalProducts.toString(),
-                Icons.inventory_2,
-                const Color(0xFF1565C0),
+                Icons.inventory_2_outlined,
               ),
             ),
-            const SizedBox(width: 12),
-            // Show inventory value only to managers
+            const SizedBox(width: 16),
             if (_isManager)
               Expanded(
                 child: _buildStatCard(
-                  'Inventory Value',
-                  '\$${_totalInventoryValue.toStringAsFixed(2)}',
-                  Icons.attach_money,
-                  const Color(0xFF2E7D32),
+                  'Value',
+                  '\$${_totalInventoryValue.toStringAsFixed(0)}',
+                  Icons.account_balance_wallet_outlined,
                 ),
               )
             else
@@ -465,19 +410,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 child: _buildStatCard(
                   'In Stock',
                   '${_totalProducts - _lowStockCount}',
-                  Icons.check_circle,
-                  const Color(0xFF2E7D32),
+                  Icons.check_circle_outline,
                 ),
               ),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         _buildStatCard(
-          'Low Stock Items',
+          'Low Stock',
           _lowStockCount.toString(),
           Icons.warning_amber_rounded,
-          _lowStockCount > 0 ? const Color(0xFFF57C00) : const Color(0xFF9E9E9E),
           fullWidth: true,
+          isAlert: _lowStockCount > 0,
         ),
       ],
     );
@@ -486,42 +430,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildStatCard(
     String title,
     String value,
-    IconData icon,
-    Color color, {
+    IconData icon, {
     bool fullWidth = false,
+    bool isAlert = false,
   }) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, color: color, size: 24),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: Colors.grey[600],
-                    ),
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: isAlert ? const Color(0xFFFFF8E1) : Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isAlert ? const Color(0xFFFFE0B2) : Colors.grey[200]!,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                icon,
+                color: isAlert ? const Color(0xFFFFB300) : Colors.black54,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: isAlert ? const Color(0xFFFFB300) : Colors.grey[600],
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: fullWidth ? 28 : 24,
-                fontWeight: FontWeight.bold,
-                color: color,
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: GoogleFonts.poppins(
+              fontSize: fullWidth ? 32 : 28,
+              fontWeight: FontWeight.bold,
+              color: isAlert ? const Color(0xFFFFB300) : Colors.black,
+              letterSpacing: -1,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -530,76 +491,119 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Icon(
-              Icons.warning_amber_rounded,
-              color: Color(0xFFF57C00),
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Low Stock Alert',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+        Text(
+          'Action Needed',
+          style: GoogleFonts.poppins(
+            fontSize: 20,
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
+          ),
         ),
-        const SizedBox(height: 12),
-        Card(
-          color: const Color(0xFFFFF3E0),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                ..._lowStockProducts.take(3).map((product) => Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.grey[200]!),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              ..._lowStockProducts
+                  .take(3)
+                  .map(
+                    (product) => Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
                       child: Row(
                         children: [
                           Container(
-                            width: 8,
-                            height: 8,
+                            width: 40,
+                            height: 40,
                             decoration: BoxDecoration(
                               color: product.isOutOfStock
-                                  ? Colors.red
-                                  : Colors.orange,
+                                  ? const Color(0xFFFFF8E1)
+                                  : const Color(0xFFFFF3E0),
                               shape: BoxShape.circle,
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Text(
-                              product.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                              ),
+                            child: Icon(
+                              product.isOutOfStock
+                                  ? Icons.error_outline
+                                  : Icons.warning_amber,
+                              color: product.isOutOfStock
+                                  ? const Color(0xFFFFB300)
+                                  : const Color(0xFFFFB300),
+                              size: 20,
                             ),
                           ),
-                          Text(
-                            'Qty: ${product.quantity}',
-                            style: TextStyle(
-                              color: Colors.grey[700],
-                              fontWeight: FontWeight.bold,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  product.name,
+                                  style: GoogleFonts.poppins(
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                                Text(
+                                  'Stock: ${product.quantity}',
+                                  style: GoogleFonts.poppins(
+                                    color: Colors.grey[600],
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton(
+                            onPressed: () {},
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFFFB300),
+                              foregroundColor: Colors.black87,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
+                              ),
+                              minimumSize: Size.zero,
+                            ),
+                            child: Text(
+                              'Order',
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                    )),
-                if (_lowStockProducts.length > 3)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      '+ ${_lowStockProducts.length - 3} more items need attention',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.grey[600],
-                        fontStyle: FontStyle.italic,
-                      ),
                     ),
                   ),
-              ],
-            ),
+              if (_lowStockProducts.length > 3)
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    '+ ${_lowStockProducts.length - 3} more items',
+                    style: GoogleFonts.poppins(
+                      fontSize: 13,
+                      color: Colors.grey[500],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ],
@@ -610,66 +614,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Quick Actions',
-          style: TextStyle(
+          style: GoogleFonts.poppins(
             fontSize: 20,
-            fontWeight: FontWeight.bold,
+            fontWeight: FontWeight.w600,
+            color: Colors.black,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 16),
         Row(
           children: [
             Expanded(
               child: _buildActionButton(
                 'Add Product',
-                Icons.add_box,
-                const Color(0xFF1565C0),
+                Icons.add_box_outlined,
                 () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Go to Inventory tab to add products'),
-                    ),
+                    const SnackBar(content: Text('Use Inventory tab')),
                   );
                 },
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 16),
             Expanded(
               child: _buildActionButton(
                 'Record Sale',
-                Icons.point_of_sale,
-                const Color(0xFF2E7D32),
+                Icons.point_of_sale_outlined,
                 () {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Go to Sales tab to record sales'),
-                    ),
+                    const SnackBar(content: Text('Use Sales tab')),
                   );
                 },
               ),
             ),
           ],
         ),
-        // Add User Management button for managers only
         if (_isManager) ...[
-          const SizedBox(height: 12),
-          _buildActionButton(
-            'Manage Users',
-            Icons.people,
-            const Color(0xFF6A1B9A),
-            () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => UserManagementScreen(
-                    currentUser: widget.currentUser!,
-                  ),
-                ),
-              );
-            },
-            fullWidth: true,
-          ),
+          const SizedBox(height: 16),
+          _buildActionButton('Manage Users', Icons.people_outline, () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    UserManagementScreen(currentUser: widget.currentUser!),
+              ),
+            );
+          }, fullWidth: true),
         ],
       ],
     );
@@ -678,45 +669,57 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildActionButton(
     String label,
     IconData icon,
-    Color color,
     VoidCallback onPressed, {
     bool fullWidth = false,
   }) {
-    return Card(
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: fullWidth
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, color: color, size: 24),
-                    const SizedBox(width: 12),
-                    Text(
-                      label,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                )
-              : Column(
-                  children: [
-                    Icon(icon, color: color, size: 32),
-                    const SizedBox(height: 8),
-                    Text(
-                      label,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.grey[200]!),
         ),
+        child: fullWidth
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(icon, color: Colors.black87, size: 24),
+                  const SizedBox(width: 12),
+                  Text(
+                    label,
+                    style: GoogleFonts.poppins(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, color: Colors.black87, size: 28),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    label,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black,
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

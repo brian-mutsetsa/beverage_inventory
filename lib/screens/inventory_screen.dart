@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../database/database_helper.dart';
 import '../models/product.dart';
 import '../models/user.dart';
@@ -22,7 +23,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   String _searchQuery = '';
 
   bool get _isManager => widget.currentUser?.isManager ?? false;
-  bool get _canDelete => _isManager; // Only managers can delete
+  bool get _canDelete => _isManager;
 
   @override
   void initState() {
@@ -31,10 +32,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
   }
 
   Future<void> _loadProducts() async {
-    setState(() {
-      _isLoading = true;
-    });
-
+    setState(() => _isLoading = true);
     try {
       final products = await _dbHelper.readAllProducts();
       setState(() {
@@ -43,13 +41,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
         _isLoading = false;
       });
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
+      setState(() => _isLoading = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading products: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -61,9 +55,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         _filteredProducts = _products;
       } else {
         _filteredProducts = _products
-            .where((product) =>
-                product.name.toLowerCase().contains(query.toLowerCase()) ||
-                product.category.toLowerCase().contains(query.toLowerCase()))
+            .where((p) => p.name.toLowerCase().contains(query.toLowerCase()) || p.category.toLowerCase().contains(query.toLowerCase()))
             .toList();
       }
     });
@@ -71,29 +63,28 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   Future<void> _deleteProduct(Product product) async {
     if (!_canDelete) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Only managers can delete products'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Managers only'), backgroundColor: Colors.red));
       return;
     }
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Delete Product'),
-        content: Text('Are you sure you want to delete "${product.name}"?'),
+        content: Text('Delete "${product.name}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: const Text('Delete'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE53935),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            ),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
@@ -102,26 +93,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
     if (confirm == true) {
       try {
         await _dbHelper.deleteProduct(product.id!);
-        
-        // Log the action
         if (widget.currentUser != null) {
           await _dbHelper.logAction(AuditLog(
+            companyId: DatabaseHelper.instance.currentCompanyId,
             userId: widget.currentUser!.id!,
             userName: widget.currentUser!.fullName,
             action: 'delete_product',
-            details: 'Deleted product: ${product.name}',
+            details: 'Deleted ${product.name}',
             timestamp: DateTime.now().toIso8601String(),
           ));
         }
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${product.name} deleted')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${product.name} deleted'), backgroundColor: Colors.black87));
         _loadProducts();
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error deleting product: $e')),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     }
   }
@@ -129,301 +114,251 @@ class _InventoryScreenState extends State<InventoryScreen> {
   Future<void> _navigateToAddProduct([Product? product]) async {
     final result = await Navigator.push<bool>(
       context,
-      MaterialPageRoute(
-        builder: (context) => AddProductScreen(
-          product: product,
-          currentUser: widget.currentUser,
-        ),
-      ),
+      MaterialPageRoute(builder: (context) => AddProductScreen(product: product, currentUser: widget.currentUser)),
     );
-
-    if (result == true) {
-      _loadProducts();
-    }
+    if (result == true) _loadProducts();
   }
 
   Color _getStatusColor(Product product) {
-    if (product.isOutOfStock) {
-      return Colors.red;
-    } else if (product.isLowStock) {
-      return Colors.orange;
-    } else {
-      return Colors.green;
-    }
-  }
-
-  String _getStatusText(Product product) {
-    if (product.isOutOfStock) {
-      return 'Out of Stock';
-    } else if (product.isLowStock) {
-      return 'Low Stock';
-    } else {
-      return 'In Stock';
-    }
+    if (product.isOutOfStock) return const Color(0xFFE53935);
+    if (product.isLowStock) return const Color(0xFFFFB300);
+    return const Color(0xFF4CAF50);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFFAFAFA),
       appBar: AppBar(
-        title: const Text('Inventory'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        title: Text(
+          'Inventory',
+          style: GoogleFonts.poppins(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black, letterSpacing: -0.5),
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.refresh),
+            icon: const Icon(Icons.refresh, color: Colors.black87),
             onPressed: _loadProducts,
-            tooltip: 'Refresh',
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Column(
         children: [
-          // Permission info banner for staff
-          if (!_isManager) ...[
+          if (!_isManager)
             Container(
-              width: double.infinity,
+              margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               padding: const EdgeInsets.all(12),
-              color: Colors.blue[50],
+              decoration: BoxDecoration(
+                color: const Color(0xFFF5F5F5),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey[200]!),
+              ),
               child: Row(
                 children: [
-                  Icon(Icons.info_outline, size: 20, color: Colors.blue[700]),
-                  const SizedBox(width: 8),
+                  Icon(Icons.info_outline, size: 20, color: Colors.grey[700]),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'You can add and edit products. Only managers can delete.',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.blue[700],
-                      ),
+                      'Staff can add and edit. Only managers can delete.',
+                      style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[700]),
                     ),
                   ),
                 ],
               ),
             ),
-          ],
 
-          // Search Bar
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
             child: TextField(
               onChanged: _filterProducts,
+              style: GoogleFonts.poppins(fontSize: 15),
               decoration: InputDecoration(
                 hintText: 'Search products...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                hintStyle: GoogleFonts.poppins(color: Colors.grey[500]),
+                prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
                 filled: true,
-                fillColor: Colors.grey[100],
+                fillColor: Colors.white,
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: BorderSide(color: Colors.grey[200]!),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(24),
+                  borderSide: const BorderSide(color: Colors.black, width: 1.5),
+                ),
               ),
             ),
           ),
 
-          // Product List
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(child: CircularProgressIndicator(color: Colors.black))
                 : _filteredProducts.isEmpty
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.inventory_2_outlined,
-                              size: 80,
-                              color: Colors.grey[400],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              _searchQuery.isEmpty
-                                  ? 'No products yet'
-                                  : 'No products found',
-                              style: TextStyle(
-                                fontSize: 18,
-                                color: Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _searchQuery.isEmpty
-                                  ? 'Tap the + button to add your first product'
-                                  : 'Try a different search term',
-                              style: TextStyle(
-                                color: Colors.grey[500],
-                              ),
-                            ),
-                          ],
-                        ),
-                      )
+                    ? _buildEmptyState()
                     : RefreshIndicator(
+                        color: Colors.black,
                         onRefresh: _loadProducts,
                         child: ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                          physics: const AlwaysScrollableScrollPhysics(),
                           itemCount: _filteredProducts.length,
-                          itemBuilder: (context, index) {
-                            final product = _filteredProducts[index];
-                            return _buildProductCard(product);
-                          },
+                          itemBuilder: (context, index) => _buildProductCard(_filteredProducts[index]),
                         ),
                       ),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _navigateToAddProduct(),
-        child: const Icon(Icons.add),
+        backgroundColor: Colors.black,
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: Text('Item', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(color: Colors.grey[100], shape: BoxShape.circle),
+            child: Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey[400]),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            _searchQuery.isEmpty ? 'No products yet' : 'No matches found',
+            style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.black87),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _searchQuery.isEmpty ? 'Tap + to add your first product' : 'Try adjusting your search',
+            style: GoogleFonts.poppins(color: Colors.grey[500]),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildProductCard(Product product) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 12),
+    final statusColor = _getStatusColor(product);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.grey[200]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
       child: InkWell(
         onTap: () => _navigateToAddProduct(product),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(24),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Row
               Row(
                 children: [
-                  // Product Icon
                   Container(
-                    width: 50,
-                    height: 50,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1565C0).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      color: const Color(0xFFFAFAFA),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.grey[200]!),
                     ),
-                    child: const Icon(
-                      Icons.local_drink,
-                      color: Color(0xFF1565C0),
-                      size: 28,
+                    child: Center(
+                      child: Text(
+                        product.name[0].toUpperCase(),
+                        style: GoogleFonts.poppins(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.black87),
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 12),
-
-                  // Name and Category
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           product.name,
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: GoogleFonts.poppins(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black),
                         ),
-                        const SizedBox(height: 4),
                         Text(
                           product.category,
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
+                          style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[500]),
                         ),
                       ],
                     ),
                   ),
-
-                  // Status Badge
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 6,
-                    ),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(product).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                        color: _getStatusColor(product),
-                        width: 1,
-                      ),
+                      color: product.isOutOfStock ? const Color(0xFFFFEBEE) : (product.isLowStock ? const Color(0xFFFFF3E0) : const Color(0xFFE8F5E9)),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      _getStatusText(product),
-                      style: TextStyle(
-                        color: _getStatusColor(product),
+                      product.isOutOfStock ? 'Empty' : (product.isLowStock ? 'Low' : 'OK'),
+                      style: GoogleFonts.poppins(
+                        color: statusColor,
                         fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                        fontSize: 11,
                       ),
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-
-              // Stock Info Row
+              const SizedBox(height: 20),
               Row(
                 children: [
-                  _buildInfoChip(
-                    Icons.inventory_2,
-                    'Qty: ${product.quantity}',
-                    Colors.blue,
-                  ),
+                  _buildInfoChip(Icons.inventory_2_outlined, 'Qty: ${product.quantity}', Colors.black87),
                   const SizedBox(width: 8),
-                  _buildInfoChip(
-                    Icons.warning_amber,
-                    'Min: ${product.minQuantity}',
-                    Colors.orange,
-                  ),
+                  _buildInfoChip(Icons.attach_money, '\$${product.sellingPrice.toStringAsFixed(2)}', Colors.black87),
                   const SizedBox(width: 8),
-                  _buildInfoChip(
-                    Icons.attach_money,
-                    '\$${product.sellingPrice.toStringAsFixed(2)}',
-                    Colors.green,
-                  ),
+                  _buildInfoChip(Icons.domain, product.supplier.length > 8 ? '${product.supplier.substring(0, 6)}..' : product.supplier, Colors.black87),
                 ],
               ),
-              const SizedBox(height: 12),
-
-              // Supplier and Actions
+              const SizedBox(height: 16),
               Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Icon(Icons.business, size: 16, color: Colors.grey[600]),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      product.supplier,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ),
                   IconButton(
-                    icon: const Icon(Icons.edit, size: 20),
+                    icon: const Icon(Icons.edit_outlined, size: 22, color: Colors.black54),
                     onPressed: () => _navigateToAddProduct(product),
-                    tooltip: 'Edit',
-                    color: Colors.blue,
+                    constraints: const BoxConstraints(),
+                    padding: const EdgeInsets.all(8),
                   ),
-                  // Only show delete button to managers
                   if (_canDelete)
                     IconButton(
-                      icon: const Icon(Icons.delete, size: 20),
+                      icon: const Icon(Icons.delete_outline, size: 22, color: Color(0xFFE53935)),
                       onPressed: () => _deleteProduct(product),
-                      tooltip: 'Delete',
-                      color: Colors.red,
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(8),
                     )
                   else
-                    // Show locked icon for staff
                     IconButton(
-                      icon: const Icon(Icons.lock, size: 20),
+                      icon: const Icon(Icons.lock_outline, size: 22, color: Colors.grey),
                       onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Only managers can delete products'),
-                          ),
-                        );
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Managers only')));
                       },
-                      tooltip: 'Manager Only',
-                      color: Colors.grey,
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(8),
                     ),
                 ],
-              ),
+              )
             ],
           ),
         ),
@@ -433,10 +368,11 @@ class _InventoryScreenState extends State<InventoryScreen> {
 
   Widget _buildInfoChip(IconData icon, String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -445,11 +381,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
           const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: color,
-              fontWeight: FontWeight.w500,
-            ),
+            style: GoogleFonts.poppins(fontSize: 12, color: color, fontWeight: FontWeight.w500),
           ),
         ],
       ),

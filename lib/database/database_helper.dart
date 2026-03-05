@@ -11,6 +11,8 @@ class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
   static Database? _database;
 
+  String currentCompanyId = '';
+
   DatabaseHelper._init();
 
   Future<Database> get database async {
@@ -25,7 +27,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2, // UPGRADED FROM 1 TO 2
+      version: 3, // UPGRADED FROM 2 TO 3
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -36,11 +38,13 @@ class DatabaseHelper {
     const textType = 'TEXT NOT NULL';
     const intType = 'INTEGER NOT NULL';
     const realType = 'REAL NOT NULL';
+    const companyIdType = 'TEXT NOT NULL';
 
     // Products table
     await db.execute('''
     CREATE TABLE products (
       id $idType,
+      companyId $companyIdType,
       name $textType,
       category $textType,
       quantity $intType,
@@ -59,6 +63,7 @@ class DatabaseHelper {
     await db.execute('''
     CREATE TABLE sales (
       id $idType,
+      companyId $companyIdType,
       productId $intType,
       productName $textType,
       quantitySold $intType,
@@ -73,6 +78,7 @@ class DatabaseHelper {
     await db.execute('''
     CREATE TABLE users (
       id $idType,
+      companyId $companyIdType,
       pin $textType,
       fullName $textType,
       role $textType,
@@ -88,6 +94,7 @@ class DatabaseHelper {
     await db.execute('''
     CREATE TABLE audit_logs (
       id $idType,
+      companyId $companyIdType,
       userId $intType,
       userName $textType,
       action $textType,
@@ -123,11 +130,7 @@ class DatabaseHelper {
 
   Future<Product?> readProduct(int id) async {
     final db = await database;
-    final maps = await db.query(
-      'products',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    final maps = await db.query('products', where: 'id = ?', whereArgs: [id]);
 
     if (maps.isNotEmpty) {
       return Product.fromMap(maps.first);
@@ -138,7 +141,12 @@ class DatabaseHelper {
   Future<List<Product>> readAllProducts() async {
     final db = await database;
     const orderBy = 'name ASC';
-    final result = await db.query('products', orderBy: orderBy);
+    final result = await db.query(
+      'products',
+      where: 'companyId = ?',
+      whereArgs: [currentCompanyId],
+      orderBy: orderBy,
+    );
     return result.map((map) => Product.fromMap(map)).toList();
   }
 
@@ -154,23 +162,22 @@ class DatabaseHelper {
 
   Future<int> deleteProduct(int id) async {
     final db = await database;
-    return await db.delete(
-      'products',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('products', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<int> getProductCount() async {
     final db = await database;
-    final result = await db.rawQuery('SELECT COUNT(*) as count FROM products');
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM products WHERE companyId = ?',
+      [currentCompanyId],
+    );
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
   Future<double> getTotalInventoryValue() async {
     final db = await database;
     final result = await db.rawQuery(
-      'SELECT SUM(quantity * sellingPrice) as total FROM products'
+      'SELECT SUM(quantity * sellingPrice) as total FROM products',
     );
     return (result.first['total'] as num?)?.toDouble() ?? 0.0;
   }
@@ -196,17 +203,18 @@ class DatabaseHelper {
   Future<List<Sale>> readAllSales() async {
     final db = await database;
     const orderBy = 'saleDate DESC';
-    final result = await db.query('sales', orderBy: orderBy);
+    final result = await db.query(
+      'sales',
+      where: 'companyId = ?',
+      whereArgs: [currentCompanyId],
+      orderBy: orderBy,
+    );
     return result.map((map) => Sale.fromMap(map)).toList();
   }
 
   Future<int> deleteSale(int id) async {
     final db = await database;
-    return await db.delete(
-      'sales',
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.delete('sales', where: 'id = ?', whereArgs: [id]);
   }
 
   // ==================== USER METHODS ====================
@@ -248,7 +256,12 @@ class DatabaseHelper {
 
   Future<List<User>> getAllUsers() async {
     final db = await database;
-    final result = await db.query('users', orderBy: 'createdAt DESC');
+    final result = await db.query(
+      'users',
+      where: 'companyId = ?',
+      whereArgs: [currentCompanyId],
+      orderBy: 'createdAt DESC',
+    );
     return result.map((map) => User.fromMap(map)).toList();
   }
 
@@ -282,14 +295,14 @@ class DatabaseHelper {
     );
   }
 
-  Future<String> generateUniquePIN() async {
+  Future<String> generateUniquePIN(String prefix) async {
     final random = Random();
     String pin;
     bool isUnique = false;
 
     do {
-      pin = '';
-      for (int i = 0; i < 6; i++) {
+      pin = prefix;
+      for (int i = 0; i < 3; i++) {
         pin += random.nextInt(10).toString();
       }
 
@@ -365,7 +378,10 @@ class DatabaseHelper {
     return Sqflite.firstIntValue(result) ?? 0;
   }
 
-  Future<List<Map<String, dynamic>>> getSalesByProduct({String? startDate, String? endDate}) async {
+  Future<List<Map<String, dynamic>>> getSalesByProduct({
+    String? startDate,
+    String? endDate,
+  }) async {
     final db = await database;
     String query = '''
       SELECT 
@@ -393,7 +409,8 @@ class DatabaseHelper {
     final endDate = DateTime.now();
     final startDate = endDate.subtract(Duration(days: days));
 
-    final result = await db.rawQuery('''
+    final result = await db.rawQuery(
+      '''
       SELECT 
         DATE(saleDate) as date,
         SUM(totalAmount) as total,
@@ -402,7 +419,9 @@ class DatabaseHelper {
       WHERE saleDate >= ? AND saleDate <= ?
       GROUP BY DATE(saleDate)
       ORDER BY date ASC
-    ''', [startDate.toIso8601String(), endDate.toIso8601String()]);
+    ''',
+      [startDate.toIso8601String(), endDate.toIso8601String()],
+    );
 
     return result;
   }
@@ -410,15 +429,16 @@ class DatabaseHelper {
   // Inventory Reports
   Future<Map<String, dynamic>> getInventoryStats() async {
     final db = await database;
-    
+
     final totalProducts = await getProductCount();
     final totalValue = await getTotalInventoryValue();
     final lowStockCount = (await getLowStockProducts()).length;
-    
+
     final costResult = await db.rawQuery(
-      'SELECT SUM(quantity * costPrice) as totalCost FROM products'
+      'SELECT SUM(quantity * costPrice) as totalCost FROM products',
     );
-    final totalCost = (costResult.first['totalCost'] as num?)?.toDouble() ?? 0.0;
+    final totalCost =
+        (costResult.first['totalCost'] as num?)?.toDouble() ?? 0.0;
 
     return {
       'totalProducts': totalProducts,
@@ -465,7 +485,8 @@ class DatabaseHelper {
     final db = await database;
     final startDate = DateTime.now().subtract(Duration(days: days));
 
-    final result = await db.rawQuery('''
+    final result = await db.rawQuery(
+      '''
       SELECT 
         userId,
         userName,
@@ -476,18 +497,26 @@ class DatabaseHelper {
       WHERE timestamp >= ?
       GROUP BY userId, userName, action, DATE(timestamp)
       ORDER BY timestamp DESC
-    ''', [startDate.toIso8601String()]);
+    ''',
+      [startDate.toIso8601String()],
+    );
 
     return result;
   }
 
   // Profit Analysis
-  Future<Map<String, dynamic>> getProfitAnalysis({String? startDate, String? endDate}) async {
+  Future<Map<String, dynamic>> getProfitAnalysis({
+    String? startDate,
+    String? endDate,
+  }) async {
     final db = await database;
-    
+
     // Get total revenue from sales
-    final totalRevenue = await getTotalSales(startDate: startDate, endDate: endDate);
-    
+    final totalRevenue = await getTotalSales(
+      startDate: startDate,
+      endDate: endDate,
+    );
+
     // Get cost of goods sold (need to calculate from products at time of sale)
     // For now, we'll estimate using current product costs
     String query = '''
@@ -508,7 +537,7 @@ class DatabaseHelper {
     query += ' GROUP BY s.productId, p.costPrice';
 
     final result = await db.rawQuery(query, args);
-    
+
     double totalCost = 0.0;
     for (var row in result) {
       final costPrice = (row['costPrice'] as num?)?.toDouble() ?? 0.0;
@@ -517,7 +546,9 @@ class DatabaseHelper {
     }
 
     final grossProfit = totalRevenue - totalCost;
-    final profitMargin = totalRevenue > 0 ? (grossProfit / totalRevenue) * 100 : 0.0;
+    final profitMargin = totalRevenue > 0
+        ? (grossProfit / totalRevenue) * 100
+        : 0.0;
 
     return {
       'totalRevenue': totalRevenue,

@@ -31,8 +31,10 @@ class DemoDataHelper {
     List<User> createdEmployees = [];
 
     for (var emp in employeeData) {
-      final pin = await _dbHelper.generateUniquePIN();
+      final prefix = currentUser.pin.substring(0, 3);
+      final pin = await _dbHelper.generateUniquePIN(prefix);
       final employee = User(
+        companyId: DatabaseHelper.instance.currentCompanyId,
         pin: pin,
         fullName: emp['name']!,
         role: 'staff',
@@ -49,9 +51,10 @@ class DemoDataHelper {
 
   static Future<void> _createDemoProducts() async {
     final now = DateTime.now().toIso8601String();
-    
+
     final products = [
       Product(
+        companyId: DatabaseHelper.instance.currentCompanyId,
         name: 'Coca-Cola 500ml',
         category: 'Soft Drink',
         quantity: 50,
@@ -63,6 +66,7 @@ class DemoDataHelper {
         updatedAt: now,
       ),
       Product(
+        companyId: DatabaseHelper.instance.currentCompanyId,
         name: 'Pepsi 500ml',
         category: 'Soft Drink',
         quantity: 35,
@@ -74,6 +78,7 @@ class DemoDataHelper {
         updatedAt: now,
       ),
       Product(
+        companyId: DatabaseHelper.instance.currentCompanyId,
         name: 'Fanta Orange 500ml',
         category: 'Soft Drink',
         quantity: 15,
@@ -85,6 +90,7 @@ class DemoDataHelper {
         updatedAt: now,
       ),
       Product(
+        companyId: DatabaseHelper.instance.currentCompanyId,
         name: 'Sprite 500ml',
         category: 'Soft Drink',
         quantity: 8,
@@ -96,6 +102,7 @@ class DemoDataHelper {
         updatedAt: now,
       ),
       Product(
+        companyId: DatabaseHelper.instance.currentCompanyId,
         name: 'Mazoe Orange 2L',
         category: 'Juice Concentrate',
         quantity: 25,
@@ -107,6 +114,7 @@ class DemoDataHelper {
         updatedAt: now,
       ),
       Product(
+        companyId: DatabaseHelper.instance.currentCompanyId,
         name: 'Ceres Apple Juice 1L',
         category: 'Juice',
         quantity: 12,
@@ -118,6 +126,7 @@ class DemoDataHelper {
         updatedAt: now,
       ),
       Product(
+        companyId: DatabaseHelper.instance.currentCompanyId,
         name: 'Schweppes Tonic 500ml',
         category: 'Mixer',
         quantity: 20,
@@ -129,6 +138,7 @@ class DemoDataHelper {
         updatedAt: now,
       ),
       Product(
+        companyId: DatabaseHelper.instance.currentCompanyId,
         name: 'Minute Maid Orange 500ml',
         category: 'Juice',
         quantity: 30,
@@ -140,6 +150,7 @@ class DemoDataHelper {
         updatedAt: now,
       ),
       Product(
+        companyId: DatabaseHelper.instance.currentCompanyId,
         name: 'Aquafresh Water 500ml',
         category: 'Water',
         quantity: 100,
@@ -151,6 +162,7 @@ class DemoDataHelper {
         updatedAt: now,
       ),
       Product(
+        companyId: DatabaseHelper.instance.currentCompanyId,
         name: 'Mountain Dew 500ml',
         category: 'Soft Drink',
         quantity: 5,
@@ -168,7 +180,10 @@ class DemoDataHelper {
     }
   }
 
-  static Future<void> _createDemoSales(User currentUser, List<User> demoEmployees) async {
+  static Future<void> _createDemoSales(
+    User currentUser,
+    List<User> demoEmployees,
+  ) async {
     final products = await _dbHelper.readAllProducts();
     if (products.isEmpty) return;
 
@@ -183,37 +198,37 @@ class DemoDataHelper {
       {'productIndex': 0, 'quantity': 10, 'daysAgo': 7},
       {'productIndex': 1, 'quantity': 5, 'daysAgo': 7},
       {'productIndex': 8, 'quantity': 20, 'daysAgo': 7},
-      
+
       // Day 2 (6 days ago)
       {'productIndex': 0, 'quantity': 8, 'daysAgo': 6},
       {'productIndex': 4, 'quantity': 3, 'daysAgo': 6},
       {'productIndex': 7, 'quantity': 6, 'daysAgo': 6},
-      
+
       // Day 3 (5 days ago)
       {'productIndex': 2, 'quantity': 12, 'daysAgo': 5},
       {'productIndex': 5, 'quantity': 4, 'daysAgo': 5},
       {'productIndex': 8, 'quantity': 15, 'daysAgo': 5},
-      
+
       // Day 4 (4 days ago)
       {'productIndex': 0, 'quantity': 15, 'daysAgo': 4},
       {'productIndex': 1, 'quantity': 8, 'daysAgo': 4},
       {'productIndex': 6, 'quantity': 5, 'daysAgo': 4},
-      
+
       // Day 5 (3 days ago)
       {'productIndex': 3, 'quantity': 10, 'daysAgo': 3},
       {'productIndex': 4, 'quantity': 5, 'daysAgo': 3},
       {'productIndex': 7, 'quantity': 8, 'daysAgo': 3},
-      
+
       // Day 6 (2 days ago)
       {'productIndex': 0, 'quantity': 12, 'daysAgo': 2},
       {'productIndex': 2, 'quantity': 7, 'daysAgo': 2},
       {'productIndex': 8, 'quantity': 25, 'daysAgo': 2},
-      
+
       // Day 7 (Yesterday)
       {'productIndex': 1, 'quantity': 10, 'daysAgo': 1},
       {'productIndex': 5, 'quantity': 6, 'daysAgo': 1},
       {'productIndex': 9, 'quantity': 8, 'daysAgo': 1},
-      
+
       // Today
       {'productIndex': 0, 'quantity': 5, 'daysAgo': 0},
       {'productIndex': 4, 'quantity': 2, 'daysAgo': 0},
@@ -234,25 +249,32 @@ class DemoDataHelper {
       final assignedUser = allSalesUsers[random.nextInt(allSalesUsers.length)];
 
       final sale = Sale(
+        companyId: DatabaseHelper.instance.currentCompanyId,
         productId: product.id!,
         productName: product.name,
         quantitySold: quantity,
         unitPrice: product.sellingPrice,
         totalAmount: product.sellingPrice * quantity,
         saleDate: saleDate.toIso8601String(),
-        notes: daysAgo == 0 ? 'Demo sale - Today' : 'Demo sale - $daysAgo days ago',
+        notes: daysAgo == 0
+            ? 'Demo sale - Today'
+            : 'Demo sale - $daysAgo days ago',
       );
 
       await _dbHelper.createSale(sale);
 
       // Log the action with the assigned user
-      await _dbHelper.logAction(AuditLog(
-        userId: assignedUser.id!,
-        userName: assignedUser.fullName,
-        action: 'record_sale',
-        details: 'Sold ${quantity}x ${product.name} - \$${sale.totalAmount.toStringAsFixed(2)}',
-        timestamp: saleDate.toIso8601String(),
-      ));
+      await _dbHelper.logAction(
+        AuditLog(
+          companyId: DatabaseHelper.instance.currentCompanyId,
+          userId: assignedUser.id!,
+          userName: assignedUser.fullName,
+          action: 'record_sale',
+          details:
+              'Sold ${quantity}x ${product.name} - \$${sale.totalAmount.toStringAsFixed(2)}',
+          timestamp: saleDate.toIso8601String(),
+        ),
+      );
     }
   }
 
@@ -260,7 +282,7 @@ class DemoDataHelper {
     // Check if demo data already exists
     final products = await _dbHelper.readAllProducts();
     final users = await _dbHelper.getAllUsers();
-    
+
     // If there are products or more than 1 user (the manager), demo data exists
     return products.isNotEmpty || users.length > 1;
   }
