@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
 import '../database/database_helper.dart';
 import '../models/product.dart';
 import '../models/user.dart';
@@ -20,8 +19,22 @@ class _AddProductScreenState extends State<AddProductScreen> {
   final _formKey = GlobalKey<FormState>();
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
 
+  // Predefined beverage categories
+  static const List<String> _categories = [
+    'Soft Drink',
+    'Juice',
+    'Juice Concentrate',
+    'Water',
+    'Energy Drink',
+    'Mixer',
+    'Alcoholic',
+    'Dairy',
+    'Tea & Coffee',
+    'Other',
+  ];
+
   late TextEditingController _nameController;
-  late TextEditingController _categoryController;
+  String _selectedCategory = 'Soft Drink';
   late TextEditingController _quantityController;
   late TextEditingController _minQuantityController;
   late TextEditingController _costPriceController;
@@ -36,7 +49,8 @@ class _AddProductScreenState extends State<AddProductScreen> {
     super.initState();
     
     _nameController = TextEditingController(text: widget.product?.name ?? '');
-    _categoryController = TextEditingController(text: widget.product?.category ?? 'Soft Drink');
+    _selectedCategory = widget.product?.category ?? 'Soft Drink';
+    if (!_categories.contains(_selectedCategory)) _selectedCategory = 'Other';
     _quantityController = TextEditingController(text: widget.product?.quantity.toString() ?? '0');
     _minQuantityController = TextEditingController(text: widget.product?.minQuantity.toString() ?? '10');
     _costPriceController = TextEditingController(text: widget.product?.costPrice.toString() ?? '');
@@ -48,7 +62,6 @@ class _AddProductScreenState extends State<AddProductScreen> {
   @override
   void dispose() {
     _nameController.dispose();
-    _categoryController.dispose();
     _quantityController.dispose();
     _minQuantityController.dispose();
     _costPriceController.dispose();
@@ -68,7 +81,7 @@ class _AddProductScreenState extends State<AddProductScreen> {
         companyId: DatabaseHelper.instance.currentCompanyId,
         id: widget.product?.id,
         name: _nameController.text.trim(),
-        category: _categoryController.text.trim(),
+        category: _selectedCategory,
         quantity: int.parse(_quantityController.text),
         minQuantity: int.parse(_minQuantityController.text),
         costPrice: double.parse(_costPriceController.text),
@@ -182,12 +195,20 @@ class _AddProductScreenState extends State<AddProductScreen> {
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
               ),
               const SizedBox(height: 16),
-              TextFormField(
-                controller: _categoryController,
-                style: GoogleFonts.poppins(fontSize: 15),
-                decoration: _inputDecoration('Category', Icons.category_outlined, hintText: 'e.g. Soft Drink'),
-                textCapitalization: TextCapitalization.words,
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+              DropdownButtonFormField<String>(
+                value: _selectedCategory,
+                icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.black54),
+                decoration: _inputDecoration('Category', Icons.category_outlined),
+                isExpanded: true,
+                style: GoogleFonts.poppins(fontSize: 15, color: Colors.black87),
+                items: _categories.map((cat) => DropdownMenuItem(
+                  value: cat,
+                  child: Text(cat),
+                )).toList(),
+                onChanged: (val) {
+                  if (val != null) setState(() => _selectedCategory = val);
+                },
+                validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
               ),
               
               const SizedBox(height: 32),

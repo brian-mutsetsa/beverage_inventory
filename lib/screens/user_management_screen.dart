@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../database/database_helper.dart';
 import '../models/user.dart';
 import '../models/audit_log.dart';
+import '../helpers/security_helper.dart';
+import '../services/sync_service.dart';
 
 class UserManagementScreen extends StatefulWidget {
   final User currentUser;
@@ -19,6 +21,16 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
   List<User> _users = [];
   bool _isLoading = true;
   String _searchQuery = '';
+
+  String _getPinPrefix(String companyName) {
+    String prefix = companyName.replaceAll(RegExp(r'[^a-zA-Z]'), '').toUpperCase();
+    if (prefix.length < 3) {
+      prefix = prefix.padRight(3, 'X');
+    } else {
+      prefix = prefix.substring(0, 3);
+    }
+    return prefix;
+  }
 
   @override
   void initState() {
@@ -160,7 +172,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
   Future<void> _createEmployee(String name, String phone) async {
     try {
-      final prefix = widget.currentUser.pin.substring(0, 3);
+      final company = await _dbHelper.getCompany(DatabaseHelper.instance.currentCompanyId);
+      final prefix = _getPinPrefix(company?.name ?? 'AUR');
       final pin = await _dbHelper.generateUniquePIN(prefix);
       final employee = User(
         companyId: DatabaseHelper.instance.currentCompanyId,
@@ -448,10 +461,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
     if (confirm == true) {
       try {
-        final prefix = widget.currentUser.pin.substring(0, 3);
+        final company = await _dbHelper.getCompany(DatabaseHelper.instance.currentCompanyId);
+        final prefix = _getPinPrefix(company?.name ?? 'AUR');
         final newPin = await _dbHelper.generateUniquePIN(prefix);
-        final updatedUser = user.copyWith(pin: newPin);
+        final hashedPin = SecurityHelper.hashPin(newPin);
+        final updatedUser = user.copyWith(pin: hashedPin);
         await _dbHelper.updateUser(updatedUser);
+        // Push plaintext PIN to Supabase (updateUser pushes hash, so fix it)
+        SyncService.instance.pushUser(updatedUser.copyWith(pin: newPin));
         await _dbHelper.logAction(
           AuditLog(
             companyId: DatabaseHelper.instance.currentCompanyId,
@@ -752,7 +769,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       ),
                     ),
                     Text(
-                      user.pin,
+                      '••••••',
                       style: GoogleFonts.poppins(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,

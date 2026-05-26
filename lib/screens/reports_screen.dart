@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../database/database_helper.dart';
 import '../models/user.dart';
 import '../helpers/pdf_report_generator.dart';
+import '../services/ai_service.dart';
 
 class ReportsScreen extends StatefulWidget {
   final User? currentUser;
@@ -33,6 +34,9 @@ class _ReportsScreenState extends State<ReportsScreen>
   // Inventory Data
   Map<String, dynamic> _inventoryStats = {};
   List<Map<String, dynamic>> _categoryData = [];
+  List<Map<String, dynamic>> _topSellers = [];
+  List<Map<String, dynamic>> _slowMovers = [];
+  List<Map<String, dynamic>> _stockHealth = [];
 
   // Employee Data
   List<Map<String, dynamic>> _employeePerformance = [];
@@ -40,6 +44,10 @@ class _ReportsScreenState extends State<ReportsScreen>
 
   // Profit Data
   Map<String, dynamic> _profitAnalysis = {};
+
+  // Orders & AI Data
+  List<Map<String, dynamic>> _ordersSummary = [];
+  List<Map<String, dynamic>> _reorderAlerts = [];
 
   bool get _isManager => widget.currentUser?.isManager ?? false;
 
@@ -108,6 +116,13 @@ class _ReportsScreenState extends State<ReportsScreen>
       // Load Inventory Data
       _inventoryStats = await _dbHelper.getInventoryStats();
       _categoryData = await _dbHelper.getProductsByCategory();
+      _topSellers = await _dbHelper.getTopSellers(days: 30, limit: 5);
+      _slowMovers = await _dbHelper.getSlowMovers(days: 30);
+      _stockHealth = await _dbHelper.getStockHealth();
+
+      // Load Orders
+      final orders = await _dbHelper.getOrders();
+      _ordersSummary = orders.map((o) => o.toMap()).toList();
 
       // Load Employee Data (Manager only)
       if (_isManager) {
@@ -117,6 +132,11 @@ class _ReportsScreenState extends State<ReportsScreen>
           startDate: monthStart,
           endDate: now.toIso8601String(),
         );
+        try {
+          _reorderAlerts = await AIService.instance.getReorderAlerts();
+        } catch (_) {
+          _reorderAlerts = [];
+        }
       }
 
       setState(() {
@@ -134,40 +154,64 @@ class _ReportsScreenState extends State<ReportsScreen>
     }
   }
 
-  Future<void> _exportCurrentTab() async {
+  Future<void> _exportFullReport() async {
     try {
-      final currentIndex = _tabController.index;
-
-      if (currentIndex == 0) {
-        // Sales Tab
-        await PdfReportGenerator.generateSalesReport(
-          todaySales: _todaySales,
-          weekSales: _weekSales,
-          monthSales: _monthSales,
-          todayTransactions: _todayTransactions,
-          weekTransactions: _weekTransactions,
-          monthTransactions: _monthTransactions,
-          topProducts: _topProducts,
-          dailySales: _dailySalesData,
-        );
-      } else if (currentIndex == 1) {
-        // Inventory Tab
-        await PdfReportGenerator.generateInventoryReport(
-          stats: _inventoryStats,
-          categoryData: _categoryData,
-        );
-      } else if (_isManager && currentIndex == 2) {
-        // Employees Tab
-        await PdfReportGenerator.generateEmployeeReport(
-          performance: _employeePerformance,
-          activity: _recentActivity,
-        );
-      } else if (_isManager && currentIndex == 3) {
-        // Profit Tab
-        await PdfReportGenerator.generateProfitReport(
-          profitAnalysis: _profitAnalysis,
+      await PdfReportGenerator.generateComprehensiveReport(
+        companyName: 'Aura Beverages',
+        todaySales: _todaySales,
+        weekSales: _weekSales,
+        monthSales: _monthSales,
+        todayTransactions: _todayTransactions,
+        weekTransactions: _weekTransactions,
+        monthTransactions: _monthTransactions,
+        topProducts: _topProducts,
+        dailySales: _dailySalesData,
+        inventoryStats: _inventoryStats,
+        categoryData: _categoryData,
+        topSellers: _topSellers,
+        slowMovers: _slowMovers,
+        stockHealth: _stockHealth,
+        employeePerformance: _employeePerformance,
+        recentActivity: _recentActivity,
+        profitAnalysis: _profitAnalysis,
+        ordersSummary: _ordersSummary,
+        aiInsights: const [],
+        aiRecommendations: const [],
+        reorderAlerts: _reorderAlerts,
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('✓ Full Business Report generated!'),
+            backgroundColor: Colors.black87,
+          ),
         );
       }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
+  Future<void> _exportCurrentTab() async {
+    try {
+      // Employees get a concise 3-page report, not the full 12-page report
+      await PdfReportGenerator.generateEmployeeSimpleReport(
+        employeeName: widget.currentUser?.fullName ?? 'Employee',
+        companyName: 'Aura Beverages',
+        todaySales: _todaySales,
+        weekSales: _weekSales,
+        monthSales: _monthSales,
+        todayTransactions: _todayTransactions,
+        weekTransactions: _weekTransactions,
+        monthTransactions: _monthTransactions,
+        topProducts: _topProducts,
+        dailySales: _dailySalesData,
+        inventoryStats: _inventoryStats,
+        stockHealth: _stockHealth,
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -224,8 +268,8 @@ class _ReportsScreenState extends State<ReportsScreen>
         actions: [
           IconButton(
             icon: const Icon(Icons.picture_as_pdf, color: Colors.black87),
-            onPressed: _exportCurrentTab,
-            tooltip: 'Export as PDF',
+            onPressed: _isManager ? _exportFullReport : _exportCurrentTab,
+            tooltip: _isManager ? 'Full Business Report' : 'Export PDF',
           ),
           IconButton(
             icon: const Icon(Icons.refresh, color: Colors.black87),
@@ -470,6 +514,21 @@ class _ReportsScreenState extends State<ReportsScreen>
           _buildInventoryStatsCards(),
           const SizedBox(height: 24),
 
+          Text('Stock Health', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+          const SizedBox(height: 12),
+          _buildStockHealthSection(),
+          const SizedBox(height: 24),
+
+          Text('Top Sellers (Last 30 Days)', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+          const SizedBox(height: 12),
+          _buildTopSellersSection(),
+          const SizedBox(height: 24),
+
+          Text('Slow Movers (Last 30 Days)', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+          const SizedBox(height: 12),
+          _buildSlowMoversSection(),
+          const SizedBox(height: 24),
+
           Text('Products by Category', style: GoogleFonts.poppins(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
           const SizedBox(height: 12),
           _buildCategoryBreakdown(),
@@ -548,6 +607,126 @@ class _ReportsScreenState extends State<ReportsScreen>
           ),
         ],
       ],
+    );
+  }
+
+  Widget _buildStockHealthSection() {
+    if (_stockHealth.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
+        child: Center(child: Text('No stock data', style: GoogleFonts.poppins(color: Colors.grey[600]))),
+      );
+    }
+
+    final statusColors = {
+      'Out of Stock': const Color(0xFFE53935),
+      'Low Stock': const Color(0xFFFF9800),
+      'Fair': const Color(0xFFFFCA28),
+      'Healthy': const Color(0xFF4CAF50),
+    };
+    final statusIcons = {
+      'Out of Stock': Icons.error_outline,
+      'Low Stock': Icons.warning_amber,
+      'Fair': Icons.info_outline,
+      'Healthy': Icons.check_circle_outline,
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
+      child: Column(
+        children: _stockHealth.map((item) {
+          final status = item['status'] as String;
+          final count = (item['count'] as num?)?.toInt() ?? 0;
+          final color = statusColors[status] ?? Colors.grey;
+          final icon = statusIcons[status] ?? Icons.circle;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              children: [
+                Icon(icon, color: color, size: 22),
+                const SizedBox(width: 12),
+                Expanded(child: Text(status, style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.w500))),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(12)),
+                  child: Text('$count', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: color, fontSize: 14)),
+                ),
+              ],
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildTopSellersSection() {
+    if (_topSellers.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
+        child: Center(child: Text('No sales data yet', style: GoogleFonts.poppins(color: Colors.grey[600]))),
+      );
+    }
+
+    return Column(
+      children: _topSellers.asMap().entries.map((entry) {
+        final idx = entry.key;
+        final product = entry.value;
+        final name = product['name'] as String;
+        final category = product['category'] as String;
+        final totalSold = (product['totalSold'] as num?)?.toInt() ?? 0;
+        final revenue = (product['totalRevenue'] as num?)?.toDouble() ?? 0.0;
+        final medal = idx == 0 ? '🥇' : (idx == 1 ? '🥈' : (idx == 2 ? '🥉' : ''));
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: const Color(0xFFE8F5E9),
+              child: idx < 3 ? Text(medal, style: const TextStyle(fontSize: 20)) : Text('${idx + 1}', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, color: Colors.green[700])),
+            ),
+            title: Text(name, style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+            subtitle: Text('$category • $totalSold units sold'),
+            trailing: _isManager ? Text('\$${revenue.toStringAsFixed(2)}', style: GoogleFonts.poppins(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF2E7D32))) : Text('$totalSold sold', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildSlowMoversSection() {
+    if (_slowMovers.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.all(32),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
+        child: Center(child: Text('All products are selling well!', style: GoogleFonts.poppins(color: Colors.grey[600]))),
+      );
+    }
+
+    return Column(
+      children: _slowMovers.map((product) {
+        final name = product['name'] as String;
+        final category = product['category'] as String;
+        final stock = (product['quantity'] as num?)?.toInt() ?? 0;
+        final totalSold = (product['totalSold'] as num?)?.toInt() ?? 0;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey[200]!)),
+          child: ListTile(
+            leading: CircleAvatar(
+              backgroundColor: const Color(0xFFFFF3E0),
+              child: Icon(Icons.trending_down, color: Colors.orange[700]),
+            ),
+            title: Text(name, style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+            subtitle: Text('$category • Only $totalSold sold in 30 days'),
+            trailing: Text('$stock in stock', style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[600])),
+          ),
+        );
+      }).toList(),
     );
   }
 

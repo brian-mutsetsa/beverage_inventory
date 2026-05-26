@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../database/database_helper.dart';
+import '../services/sync_service.dart';
 import 'home_screen.dart';
-import 'setup_screen.dart';
 import 'manager_auth_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -80,6 +81,15 @@ class _LoginScreenState extends State<LoginScreen> {
       final user = await _dbHelper.getUserByPin(pin);
 
       if (user != null) {
+        // Self-heal: push plaintext PIN to Supabase (fixes any hash that was stored there)
+        final sync = SyncService.instance;
+        if (sync.isEnabled) {
+          sync.pushUser(user.copyWith(pin: pin));
+          sync.startListening(_dbHelper.currentCompanyId);
+          // Background full sync — don't block login
+          sync.fullSync(_dbHelper.currentCompanyId);
+        }
+
         if (mounted) {
           Navigator.pushReplacement(
             context,
@@ -111,6 +121,9 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _logoutDevice() async {
+    SyncService.instance.stopListening();
+    const secureStorage = FlutterSecureStorage();
+    await secureStorage.delete(key: 'companyId');
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('companyId');
     _dbHelper.currentCompanyId = '';

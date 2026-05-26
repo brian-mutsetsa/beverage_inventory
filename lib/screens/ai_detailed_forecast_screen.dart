@@ -14,15 +14,37 @@ class AIDetailedForecastScreen extends StatefulWidget {
 class _AIDetailedForecastScreenState extends State<AIDetailedForecastScreen> {
   final _db = DatabaseHelper.instance;
   final _ai = AIService.instance;
+  final _searchController = TextEditingController();
   
   bool _isLoading = true;
   List<Product> _products = [];
+  List<Product> _filteredProducts = [];
   Map<int, Map<String, dynamic>> _forecasts = {};
 
   @override
   void initState() {
     super.initState();
     _loadForecasts();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _filterProducts(String query) {
+    setState(() {
+      if (query.isEmpty) {
+        _filteredProducts = _products;
+      } else {
+        final lower = query.toLowerCase();
+        _filteredProducts = _products.where((p) =>
+          p.name.toLowerCase().contains(lower) ||
+          p.category.toLowerCase().contains(lower)
+        ).toList();
+      }
+    });
   }
 
   Future<void> _loadForecasts() async {
@@ -38,6 +60,7 @@ class _AIDetailedForecastScreenState extends State<AIDetailedForecastScreen> {
     if (mounted) {
       setState(() {
         _products = products;
+        _filteredProducts = products;
         _forecasts = forecasts;
         _isLoading = false;
       });
@@ -59,19 +82,70 @@ class _AIDetailedForecastScreenState extends State<AIDetailedForecastScreen> {
           : RefreshIndicator(
               onRefresh: _loadForecasts,
               color: Colors.black,
-              child: ListView.builder(
-                padding: const EdgeInsets.all(24),
-                itemCount: _products.length,
-                itemBuilder: (context, index) {
-                  final product = _products[index];
-                  final forecast = _forecasts[product.id];
+              child: Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 0),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _filterProducts,
+                      style: GoogleFonts.poppins(fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: 'Search products...',
+                        hintStyle: GoogleFonts.poppins(color: Colors.grey[400], fontSize: 14),
+                        prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+                        suffixIcon: _searchController.text.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(Icons.clear, color: Colors.grey[400]),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _filterProducts('');
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey[200]!),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(color: Colors.grey[200]!),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: const BorderSide(color: Colors.black),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: _filteredProducts.isEmpty
+                        ? Center(
+                            child: Text(
+                              'No matching products',
+                              style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey[400]),
+                            ),
+                          )
+                        : ListView.builder(
+                            padding: const EdgeInsets.all(24),
+                            itemCount: _filteredProducts.length,
+                            itemBuilder: (context, index) {
+                              final product = _filteredProducts[index];
+                              final forecast = _forecasts[product.id];
 
-                  if (forecast == null || forecast['hasEnoughData'] == false) {
-                     return _buildInsufficientDataCard(product);
-                  }
+                              if (forecast == null || forecast['hasEnoughData'] == false) {
+                                return _buildInsufficientDataCard(product);
+                              }
 
-                  return _buildForecastCard(product, forecast);
-                },
+                              return _buildForecastCard(product, forecast);
+                            },
+                          ),
+                  ),
+                ],
               ),
             ),
     );
@@ -119,8 +193,8 @@ class _AIDetailedForecastScreenState extends State<AIDetailedForecastScreen> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(child: _buildMetric('Current Stock', '\${product.quantity}', Icons.inventory_2_outlined)),
-              Expanded(child: _buildMetric('7-Day Forecast', "\${forecast['predictedSales7Days']} units", Icons.trending_up, isHighlighted: true)),
+              Expanded(child: _buildMetric('Current Stock', '${product.quantity}', Icons.inventory_2_outlined)),
+              Expanded(child: _buildMetric('7-Day Forecast', "${forecast['predictedSales7Days']} units", Icons.trending_up, isHighlighted: true)),
             ],
           ),
           const SizedBox(height: 16),
@@ -139,7 +213,7 @@ class _AIDetailedForecastScreenState extends State<AIDetailedForecastScreen> {
                   style: GoogleFonts.poppins(fontSize: 13, color: Colors.grey[700]),
                 ),
                 Text(
-                  "\${forecast['recommendedOrder']} units",
+                  "${forecast['recommendedOrder']} units",
                   style: GoogleFonts.poppins(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.indigo[600]),
                 ),
               ],

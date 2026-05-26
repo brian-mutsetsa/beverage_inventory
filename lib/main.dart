@@ -1,21 +1,46 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'screens/splash_screen.dart';
 import 'database/database_helper.dart';
 import 'services/notification_service.dart';
+import 'services/supabase_config.dart';
+import 'services/sync_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Initialize local database on app startup (Offline support)
   try {
-    // Initialize local database on app startup (Offline support)
     await DatabaseHelper.instance.database;
+  } catch (e) {
+    debugPrint('Database initialization error: $e');
+  }
 
-    // Initialize notifications
+  // Initialize notifications (non-blocking)
+  try {
     await NotificationService.instance.initialize();
   } catch (e) {
-    debugPrint('Error during initialization: $e');
+    debugPrint('Notification initialization error: $e');
+  }
+
+  // Initialize Supabase (cloud sync) — separate try/catch so DB/notifications
+  // failures don't prevent cloud from working
+  if (SupabaseConfig.isConfigured) {
+    try {
+      await Supabase.initialize(
+        url: SupabaseConfig.supabaseUrl,
+        anonKey: SupabaseConfig.supabaseAnonKey,
+      );
+      debugPrint('Supabase initialized successfully');
+      // Retry any items that failed to sync while offline
+      SyncService.instance.flushQueue();
+    } catch (e) {
+      debugPrint('Supabase initialization error: $e');
+    }
+  } else {
+    debugPrint('Supabase not configured — running in offline-only mode');
   }
 
   runApp(const AuraApp());

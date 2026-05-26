@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../database/database_helper.dart';
 import '../models/product.dart';
 import '../models/user.dart';
 import '../models/audit_log.dart';
+import '../services/sync_service.dart';
 import 'add_product_screen.dart';
 
 class InventoryScreen extends StatefulWidget {
@@ -17,6 +19,7 @@ class InventoryScreen extends StatefulWidget {
 
 class _InventoryScreenState extends State<InventoryScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  StreamSubscription<SyncEvent>? _syncSubscription;
   List<Product> _products = [];
   List<Product> _filteredProducts = [];
   bool _isLoading = true;
@@ -29,6 +32,18 @@ class _InventoryScreenState extends State<InventoryScreen> {
   void initState() {
     super.initState();
     _loadProducts();
+    // Listen for real-time cloud sync events
+    _syncSubscription = SyncService.instance.onSync.listen((event) {
+      if (event.table == SyncTable.products || event.table == SyncTable.all) {
+        _loadProducts();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadProducts() async {
@@ -54,9 +69,14 @@ class _InventoryScreenState extends State<InventoryScreen> {
       if (query.isEmpty) {
         _filteredProducts = _products;
       } else {
-        _filteredProducts = _products
-            .where((p) => p.name.toLowerCase().contains(query.toLowerCase()) || p.category.toLowerCase().contains(query.toLowerCase()))
-            .toList();
+        final q = query.toLowerCase();
+        _filteredProducts = _products.where((p) {
+          return p.name.toLowerCase().contains(q) ||
+              p.category.toLowerCase().contains(q) ||
+              p.supplier.toLowerCase().contains(q) ||
+              '\$${p.sellingPrice.toStringAsFixed(2)}'.contains(q) ||
+              p.sellingPrice.toStringAsFixed(2).contains(q);
+        }).toList();
       }
     });
   }
@@ -161,7 +181,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Staff can add and edit. Only managers can delete.',
+                      'View only. Only managers can add, edit, or delete products.',
                       style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey[700]),
                     ),
                   ),
@@ -170,12 +190,26 @@ class _InventoryScreenState extends State<InventoryScreen> {
             ),
 
           Padding(
-            padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+            child: Row(
+              children: [
+                Text('Status: ', style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600])),
+                _buildLegendChip(const Color(0xFF4CAF50), 'In Stock'),
+                const SizedBox(width: 8),
+                _buildLegendChip(const Color(0xFFFFB300), 'Low Stock'),
+                const SizedBox(width: 8),
+                _buildLegendChip(const Color(0xFFE53935), 'Empty'),
+              ],
+            ),
+          ),
+
+          Padding(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
             child: TextField(
               onChanged: _filterProducts,
               style: GoogleFonts.poppins(fontSize: 15),
               decoration: InputDecoration(
-                hintText: 'Search products...',
+                hintText: 'Search by name, category, supplier, price...',
                 hintStyle: GoogleFonts.poppins(color: Colors.grey[500]),
                 prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
                 filled: true,
@@ -211,14 +245,29 @@ class _InventoryScreenState extends State<InventoryScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: _isManager ? FloatingActionButton.extended(
         onPressed: () => _navigateToAddProduct(),
         backgroundColor: Colors.black,
         elevation: 4,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         icon: const Icon(Icons.add, color: Colors.white),
         label: Text('Item', style: GoogleFonts.poppins(color: Colors.white, fontWeight: FontWeight.w600)),
-      ),
+      ) : null,
+    );
+  }
+
+  Widget _buildLegendChip(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(label, style: GoogleFonts.poppins(fontSize: 11, color: Colors.grey[600])),
+      ],
     );
   }
 
@@ -264,7 +313,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
         ],
       ),
       child: InkWell(
-        onTap: () => _navigateToAddProduct(product),
+        onTap: _isManager ? () => _navigateToAddProduct(product) : null,
         borderRadius: BorderRadius.circular(24),
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -335,28 +384,20 @@ class _InventoryScreenState extends State<InventoryScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 22, color: Colors.black54),
-                    onPressed: () => _navigateToAddProduct(product),
-                    constraints: const BoxConstraints(),
-                    padding: const EdgeInsets.all(8),
-                  ),
-                  if (_canDelete)
+                  if (_isManager) ...[  
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 22, color: Colors.black54),
+                      onPressed: () => _navigateToAddProduct(product),
+                      constraints: const BoxConstraints(),
+                      padding: const EdgeInsets.all(8),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.delete_outline, size: 22, color: Color(0xFFE53935)),
                       onPressed: () => _deleteProduct(product),
                       constraints: const BoxConstraints(),
                       padding: const EdgeInsets.all(8),
-                    )
-                  else
-                    IconButton(
-                      icon: const Icon(Icons.lock_outline, size: 22, color: Colors.grey),
-                      onPressed: () {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Managers only')));
-                      },
-                      constraints: const BoxConstraints(),
-                      padding: const EdgeInsets.all(8),
                     ),
+                  ],
                 ],
               )
             ],

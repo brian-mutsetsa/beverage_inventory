@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../database/database_helper.dart';
 import '../services/notification_service.dart';
 import 'login_screen.dart';
@@ -68,7 +69,10 @@ class _SplashScreenState extends State<SplashScreen>
 
     final prefs = await SharedPreferences.getInstance();
     final hasSeenTutorial = prefs.getBool('has_seen_tutorial') ?? false;
-    final companyId = prefs.getString('companyId');
+
+    // Read companyId from secure storage
+    const secureStorage = FlutterSecureStorage();
+    final companyId = await secureStorage.read(key: 'companyId');
 
     Widget nextScreen;
     if (!hasSeenTutorial) {

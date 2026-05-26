@@ -1,12 +1,21 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../database/database_helper.dart';
 import '../models/product.dart';
 import '../models/user.dart';
+import '../models/audit_log.dart';
 import '../helpers/demo_data_helper.dart';
+import '../services/sync_service.dart';
+import '../services/notification_service.dart';
+import '../services/session_manager.dart';
 import 'login_screen.dart';
 import 'user_management_screen.dart';
+import 'stock_adjustment_screen.dart';
+import 'orders_screen.dart';
 import '../widgets/ai_insights_widget.dart';
+import '../widgets/sales_chart_widget.dart';
+import 'excel_import_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   final User? currentUser;
@@ -19,12 +28,16 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   final DatabaseHelper _dbHelper = DatabaseHelper.instance;
+  StreamSubscription<SyncEvent>? _syncSubscription;
 
   int _totalProducts = 0;
   double _totalInventoryValue = 0.0;
   int _lowStockCount = 0;
   List<Product> _lowStockProducts = [];
   bool _isLoading = true;
+  final Set<int> _orderedProductIds = {};
+  int _pendingOrderCount = 0;
+  final _chartKey = GlobalKey();
 
   bool get _isManager => widget.currentUser?.isManager ?? false;
   bool get _isStaff => widget.currentUser?.isStaff ?? false;
@@ -34,26 +47,53 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _loadDashboardData();
+    // Listen for real-time cloud sync events
+    _syncSubscription = SyncService.instance.onSync.listen((event) {
+      if (event.table == SyncTable.products ||
+          event.table == SyncTable.auditLogs ||
+          event.table == SyncTable.all) {
+        _refreshDashboardData();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _syncSubscription?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadDashboardData() async {
     setState(() => _isLoading = true);
+    await _fetchData();
+  }
 
+  /// Silently refresh data without showing a loading spinner.
+  Future<void> _refreshDashboardData() async {
+    await _fetchData();
+  }
+
+  Future<void> _fetchData() async {
     try {
       final productCount = await _dbHelper.getProductCount();
       final inventoryValue = await _dbHelper.getTotalInventoryValue();
       final lowStockProducts = await _dbHelper.getLowStockProducts();
+      int pendingOrders = 0;
+      try { pendingOrders = await _dbHelper.getOrderCount(status: 'pending'); } catch (_) {}
 
-      setState(() {
-        _totalProducts = productCount;
-        _totalInventoryValue = inventoryValue;
-        _lowStockProducts = lowStockProducts;
-        _lowStockCount = lowStockProducts.length;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
+        setState(() {
+          _totalProducts = productCount;
+          _totalInventoryValue = inventoryValue;
+          _lowStockProducts = lowStockProducts;
+          _lowStockCount = lowStockProducts.length;
+          _pendingOrderCount = pendingOrders;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Error loading dashboard: $e')));
@@ -100,6 +140,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
       try {
         await DemoDataHelper.loadDemoData(widget.currentUser!);
+        SyncService.instance.notifyLocal(SyncTable.all);
+        // Push all demo data to Supabase
+        await SyncService.instance.pushAll(DatabaseHelper.instance.currentCompanyId);
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -186,6 +229,153 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Future<void> _sendTestNotification() async {
+    // Send the notification
+    await NotificationService.instance.showCloudSyncNotification(1);
+
+    if (!mounted) return;
+
+    // Always show an in-app banner since the OS won't popup while the app is in the foreground
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.cloud_done, color: Colors.white, size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Notification sent! Press Home to see the popup banner.',
+                style: GoogleFonts.poppins(fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: Colors.green[700],
+        duration: const Duration(seconds: 5),
+      ),
+    );
+  }
+
+  Future<void> _openExcelImport() async {
+    if (widget.currentUser == null) return;
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ExcelImportScreen(currentUser: widget.currentUser!),
+      ),
+    );
+    if (result == true) {
+      await _loadDashboardData();
+      // Rebuild chart with fresh data
+      setState(() {});
+    }
+  }
+
+  Future<void> _showSessionTimeoutDialog() async {
+    final session = SessionManager.instance;
+    final currentMinutes = session.isEnabled ? session.timeoutDuration.inMinutes : 0;
+    int selected = currentMinutes;
+
+    final result = await showDialog<int>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text('Session Timeout', style: GoogleFonts.poppins(fontWeight: FontWeight.bold, fontSize: 18)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Auto-logout after inactivity:', style: GoogleFonts.poppins(color: Colors.grey[600], fontSize: 13)),
+              const SizedBox(height: 16),
+              ...[ 
+                {'label': '5 minutes', 'value': 5},
+                {'label': '15 minutes', 'value': 15},
+                {'label': '30 minutes', 'value': 30},
+                {'label': 'Never', 'value': 0},
+              ].map((opt) => RadioListTile<int>(
+                title: Text(opt['label'] as String, style: GoogleFonts.poppins(fontSize: 14)),
+                value: opt['value'] as int,
+                groupValue: selected,
+                activeColor: Colors.black,
+                onChanged: (v) => setDialogState(() => selected = v!),
+              )),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: GoogleFonts.poppins(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context, selected),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.black,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text('Save', style: GoogleFonts.poppins(fontWeight: FontWeight.w600)),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (result != null) {
+      await session.setTimeoutMinutes(result);
+      if (result > 0) {
+        session.startMonitoring(() {
+          // Timeout handler in HomeScreen will handle this
+        });
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(result > 0 ? 'Timeout set to $result minutes' : 'Session timeout disabled'),
+            backgroundColor: Colors.black87,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _sendOrderRequest(Product product) async {
+    if (widget.currentUser == null) return;
+
+    final deficit = product.minQuantity - product.quantity;
+    final actionDetail =
+        'Reorder request for ${product.name} (stock: ${product.quantity}, min: ${product.minQuantity}, need: $deficit) | product_id:${product.id} | min_required:${product.minQuantity}';
+
+    await _dbHelper.logAction(AuditLog(
+      companyId: DatabaseHelper.instance.currentCompanyId,
+      userId: widget.currentUser!.id!,
+      userName: widget.currentUser!.fullName,
+      action: 'order_request',
+      details: actionDetail,
+      timestamp: DateTime.now().toIso8601String(),
+    ));
+
+    setState(() {
+      _orderedProductIds.add(product.id!);
+    });
+
+    // Fire a local push notification so it appears outside the app
+    await NotificationService.instance.showInstantNotification(
+      '📋 Order Request Created',
+      '${product.name}: need $deficit units (stock: ${product.quantity}, min: ${product.minQuantity})',
+    );
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Order request created for ${product.name} (need $deficit units)',
+          ),
+          backgroundColor: const Color(0xFF4CAF50),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -252,15 +442,30 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   _loadDemoData();
                 else if (value == 'clear_data')
                   _clearDemoData();
+                else if (value == 'session_timeout')
+                  _showSessionTimeoutDialog();
+                else if (value == 'import_excel')
+                  _openExcelImport();
+                else if (value == 'test_notification')
+                  _sendTestNotification();
                 else if (value == 'logout')
                   _logout();
               },
               itemBuilder: (context) => [
-                if (_hasNoData)
-                  const PopupMenuItem(
-                    value: 'load_demo',
-                    child: Text('Load Demo Data'),
+                const PopupMenuItem(
+                  value: 'load_demo',
+                  child: Text('Load Demo Data'),
+                ),
+                const PopupMenuItem(
+                  value: 'import_excel',
+                  child: Row(
+                    children: [
+                      Icon(Icons.upload_file_outlined, size: 18, color: Colors.black87),
+                      SizedBox(width: 12),
+                      Text('Import Sales (Excel)'),
+                    ],
                   ),
+                ),
                 if (!_hasNoData)
                   const PopupMenuItem(
                     value: 'clear_data',
@@ -269,6 +474,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       style: TextStyle(color: Color(0xFFE53935)),
                     ),
                   ),
+                const PopupMenuItem(
+                  value: 'session_timeout',
+                  child: Text('Session Timeout'),
+                ),
+                const PopupMenuItem(
+                  value: 'test_notification',
+                  child: Row(
+                    children: [
+                      Icon(Icons.notifications_active_outlined, size: 18, color: Colors.black87),
+                      SizedBox(width: 12),
+                      Text('Test Notification'),
+                    ],
+                  ),
+                ),
                 const PopupMenuItem(value: 'logout', child: Text('Logout')),
               ],
             )
@@ -285,7 +504,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             )
           : RefreshIndicator(
               color: const Color(0xFFFFB300),
-              onRefresh: _loadDashboardData,
+              onRefresh: _refreshDashboardData,
               child: SingleChildScrollView(
                 physics: const AlwaysScrollableScrollPhysics(),
                 padding: const EdgeInsets.all(24),
@@ -298,6 +517,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ],
                     _buildStatisticsCards(),
                     const SizedBox(height: 32),
+                    if (!_hasNoData) ...[
+                      SalesChartWidget(key: _chartKey),
+                      const SizedBox(height: 32),
+                    ],
                     if (!_isStaff && !_hasNoData) ...[
                       const AIInsightsWidget(),
                       const SizedBox(height: 32),
@@ -555,20 +778,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                 ),
                                 Text(
-                                  'Stock: ${product.quantity}',
+                                  'Stock: ${product.quantity} / Min: ${product.minQuantity}',
                                   style: GoogleFonts.poppins(
                                     color: Colors.grey[600],
-                                    fontSize: 13,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Text(
+                                  'Need ${product.minQuantity - product.quantity} more',
+                                  style: GoogleFonts.poppins(
+                                    color: const Color(0xFFE53935),
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w500,
                                   ),
                                 ),
                               ],
                             ),
                           ),
                           ElevatedButton(
-                            onPressed: () {},
+                            onPressed: _orderedProductIds.contains(product.id)
+                                ? null
+                                : () => _sendOrderRequest(product),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFFFB300),
-                              foregroundColor: Colors.black87,
+                              backgroundColor: _orderedProductIds.contains(product.id)
+                                  ? Colors.grey[300]
+                                  : const Color(0xFFFFB300),
+                              foregroundColor: _orderedProductIds.contains(product.id)
+                                  ? Colors.grey[500]
+                                  : Colors.black87,
+                              disabledBackgroundColor: Colors.grey[300],
+                              disabledForegroundColor: Colors.grey[500],
                               elevation: 0,
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
@@ -580,7 +819,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                               minimumSize: Size.zero,
                             ),
                             child: Text(
-                              'Order',
+                              _orderedProductIds.contains(product.id) ? 'Sent' : 'Order',
                               style: GoogleFonts.poppins(
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
@@ -652,16 +891,54 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ),
         if (_isManager) ...[
           const SizedBox(height: 16),
-          _buildActionButton('Manage Users', Icons.people_outline, () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) =>
-                    UserManagementScreen(currentUser: widget.currentUser!),
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionButton('Adjust Stock', Icons.tune_outlined, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => StockAdjustmentScreen(currentUser: widget.currentUser!),
+                    ),
+                  ).then((_) => _refreshDashboardData());
+                }),
               ),
-            );
-          }, fullWidth: true),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildActionButton('Manage Users', Icons.people_outline, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          UserManagementScreen(currentUser: widget.currentUser!),
+                    ),
+                  );
+                }),
+              ),
+            ],
+          ),
         ],
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          child: _pendingOrderCount > 0
+              ? _buildActionButtonWithBadge('Orders', Icons.receipt_long_outlined, _pendingOrderCount, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => OrdersScreen(currentUser: widget.currentUser!),
+                    ),
+                  ).then((_) => _refreshDashboardData());
+                })
+              : _buildActionButton('Orders', Icons.receipt_long_outlined, () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => OrdersScreen(currentUser: widget.currentUser!),
+                    ),
+                  ).then((_) => _refreshDashboardData());
+                }),
+        ),
       ],
     );
   }
@@ -720,6 +997,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ],
               ),
+      ),
+    );
+  }
+
+  Widget _buildActionButtonWithBadge(String label, IconData icon, int badgeCount, VoidCallback onPressed) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: Colors.grey[200]!),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.black87, size: 24),
+            const SizedBox(width: 12),
+            Text(label, style: GoogleFonts.poppins(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.black)),
+            const SizedBox(width: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFA726),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '$badgeCount pending',
+                style: GoogleFonts.poppins(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

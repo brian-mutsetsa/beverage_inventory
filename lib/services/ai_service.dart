@@ -91,7 +91,7 @@ class AIService {
     } catch (e) {
       return {
         'hasEnoughData': false,
-        'message': 'Error training model: \$e',
+        'message': 'Error training model: $e',
       };
     }
   }
